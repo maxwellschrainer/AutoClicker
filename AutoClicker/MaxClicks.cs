@@ -8,7 +8,7 @@ namespace AutoClicker
         #region Fields
 
         // Number of clicks since the last Start
-        int count = 0;
+        private int count = 0;
 
         #endregion
 
@@ -20,12 +20,14 @@ namespace AutoClicker
         #endregion
 
         #region Event Handlers
+
+        // Runs when the "Start" button is clicked
         private void btnStart_Click(object sender, EventArgs e)
         {
-            count = 0;
+            count = 0; // Reset the counter on every Start
             UpdateCount();
 
-            // The Timer raises the Tick event every "Interval" milliseconds
+            // Set the timer interval to the value typed in the milliseconds field
             clickTimer.Interval = (int)numInterval.Value;
             clickTimer.Start();
 
@@ -38,28 +40,32 @@ namespace AutoClicker
             UpdateButtons(running: false);
         }
 
-        // Called automatically by the Timer: each Tick is one click
+        // Each tick from the timer is one click
         private void clickTimer_Tick(object sender, EventArgs e)
         {
             Mouse.LeftClick();
             count++;
             UpdateCount();
         }
+
         #endregion
 
         #region Helper Methods
+
         private void UpdateCount()
         {
             lblCount.Text = "Clicks: " + count;
         }
 
-        // While clicking, only Stop is enabled (and the interval can't be changed)
+        // Enables/disables the controls depending on whether the clicker is running
+        // (while running: only "Stop" is enabled and the interval is locked)
         private void UpdateButtons(bool running)
         {
             btnStart.Enabled = !running;
             btnStop.Enabled = running;
             numInterval.Enabled = !running;
         }
+
         #endregion
     }
 }

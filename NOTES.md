@@ -23,7 +23,7 @@ Windows Forms auto clicker written in C# (.NET Framework 4.8). The main form is 
 
 ## In progress
 
-- Nothing. Translation awaiting the user's review.
+- Nothing. Translation and reviewed comments in `MaxClicks.cs` awaiting the user's review.
 
 ## To do
 
