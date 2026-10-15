@@ -22,13 +22,12 @@ namespace AutoClicker
 
         private void button1_Click(object sender, EventArgs e)
         {
-            label1.Text = "Contagem: " + contagem.ToString();
+            Mouse.LeftClick();
         }
 
-        private void timer1_Tick(object sender, EventArgs e)
+        private void exitToolStripMenuItem_Click(object sender, EventArgs e)
         {
-
-            contagem++;
+            Close();
         }
     }
 }
