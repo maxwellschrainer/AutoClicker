@@ -5,51 +5,61 @@ namespace AutoClicker
 {
     public partial class MaxClicks : Form
     {
-        // Quantos cliques foram feitos desde o último "Iniciar"
-        int contagem = 0;
+        #region Fields
 
+        // Number of clicks since the last Start
+        int count = 0;
+
+        #endregion
+
+        #region Constructor
         public MaxClicks()
         {
             InitializeComponent();
         }
+        #endregion
 
-        private void btnIniciar_Click(object sender, EventArgs e)
+        #region Event Handlers
+        private void btnStart_Click(object sender, EventArgs e)
         {
-            contagem = 0;
-            AtualizarContagem();
+            count = 0;
+            UpdateCount();
 
-            // O Timer dispara o evento Tick a cada "Interval" milissegundos
-            timerCliques.Interval = (int)numIntervalo.Value;
-            timerCliques.Start();
+            // The Timer raises the Tick event every "Interval" milliseconds
+            clickTimer.Interval = (int)numInterval.Value;
+            clickTimer.Start();
 
-            AtualizarBotoes(rodando: true);
+            UpdateButtons(running: true);
         }
 
-        private void btnParar_Click(object sender, EventArgs e)
+        private void btnStop_Click(object sender, EventArgs e)
         {
-            timerCliques.Stop();
-            AtualizarBotoes(rodando: false);
+            clickTimer.Stop();
+            UpdateButtons(running: false);
         }
 
-        // Chamado automaticamente pelo Timer: cada Tick é um clique
-        private void timerCliques_Tick(object sender, EventArgs e)
+        // Called automatically by the Timer: each Tick is one click
+        private void clickTimer_Tick(object sender, EventArgs e)
         {
             Mouse.LeftClick();
-            contagem++;
-            AtualizarContagem();
+            count++;
+            UpdateCount();
+        }
+        #endregion
+
+        #region Helper Methods
+        private void UpdateCount()
+        {
+            lblCount.Text = "Clicks: " + count;
         }
 
-        private void AtualizarContagem()
+        // While clicking, only Stop is enabled (and the interval can't be changed)
+        private void UpdateButtons(bool running)
         {
-            lblContagem.Text = "Cliques: " + contagem;
+            btnStart.Enabled = !running;
+            btnStop.Enabled = running;
+            numInterval.Enabled = !running;
         }
-
-        // Enquanto está clicando, só o "Parar" fica habilitado (e não dá pra mudar o intervalo)
-        private void AtualizarBotoes(bool rodando)
-        {
-            btnIniciar.Enabled = !rodando;
-            btnParar.Enabled = rodando;
-            numIntervalo.Enabled = !rodando;
-        }
+        #endregion
     }
 }
