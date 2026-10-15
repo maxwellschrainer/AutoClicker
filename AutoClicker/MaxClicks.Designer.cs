@@ -1,4 +1,4 @@
-﻿namespace AutoClicker
+namespace AutoClicker
 {
     partial class MaxClicks
     {
@@ -28,84 +28,123 @@
         /// </summary>
         private void InitializeComponent()
         {
-            this.Header = new System.Windows.Forms.MenuStrip();
-            this.programToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
-            this.exitToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
-            this.clickerToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
-            this.macroToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
-            this.helpToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
-            this.Header.SuspendLayout();
+            this.components = new System.ComponentModel.Container();
+            this.grpIntervalo = new System.Windows.Forms.GroupBox();
+            this.lblMs = new System.Windows.Forms.Label();
+            this.numIntervalo = new System.Windows.Forms.NumericUpDown();
+            this.btnIniciar = new System.Windows.Forms.Button();
+            this.btnParar = new System.Windows.Forms.Button();
+            this.lblContagem = new System.Windows.Forms.Label();
+            this.timerCliques = new System.Windows.Forms.Timer(this.components);
+            this.grpIntervalo.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.numIntervalo)).BeginInit();
             this.SuspendLayout();
-            // 
-            // Header
-            // 
-            this.Header.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
-            this.programToolStripMenuItem,
-            this.clickerToolStripMenuItem,
-            this.macroToolStripMenuItem,
-            this.helpToolStripMenuItem});
-            this.Header.Location = new System.Drawing.Point(0, 0);
-            this.Header.Name = "Header";
-            this.Header.Size = new System.Drawing.Size(602, 24);
-            this.Header.TabIndex = 2;
-            this.Header.Text = "menuStrip1";
-            // 
-            // programToolStripMenuItem
-            // 
-            this.programToolStripMenuItem.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
-            this.exitToolStripMenuItem});
-            this.programToolStripMenuItem.Name = "programToolStripMenuItem";
-            this.programToolStripMenuItem.Size = new System.Drawing.Size(65, 20);
-            this.programToolStripMenuItem.Text = "Program";
-            // 
-            // exitToolStripMenuItem
-            // 
-            this.exitToolStripMenuItem.Name = "exitToolStripMenuItem";
-            this.exitToolStripMenuItem.Size = new System.Drawing.Size(92, 22);
-            this.exitToolStripMenuItem.Text = "Exit";
-            this.exitToolStripMenuItem.Click += new System.EventHandler(this.exitToolStripMenuItem_Click);
-            // 
-            // clickerToolStripMenuItem
-            // 
-            this.clickerToolStripMenuItem.Name = "clickerToolStripMenuItem";
-            this.clickerToolStripMenuItem.Size = new System.Drawing.Size(55, 20);
-            this.clickerToolStripMenuItem.Text = "Clicker";
-            // 
-            // macroToolStripMenuItem
-            // 
-            this.macroToolStripMenuItem.Name = "macroToolStripMenuItem";
-            this.macroToolStripMenuItem.Size = new System.Drawing.Size(53, 20);
-            this.macroToolStripMenuItem.Text = "Macro";
-            // 
-            // helpToolStripMenuItem
-            // 
-            this.helpToolStripMenuItem.Name = "helpToolStripMenuItem";
-            this.helpToolStripMenuItem.Size = new System.Drawing.Size(44, 20);
-            this.helpToolStripMenuItem.Text = "Help";
-            // 
+            //
+            // grpIntervalo
+            //
+            this.grpIntervalo.Controls.Add(this.lblMs);
+            this.grpIntervalo.Controls.Add(this.numIntervalo);
+            this.grpIntervalo.Location = new System.Drawing.Point(12, 12);
+            this.grpIntervalo.Name = "grpIntervalo";
+            this.grpIntervalo.Size = new System.Drawing.Size(260, 55);
+            this.grpIntervalo.TabIndex = 0;
+            this.grpIntervalo.TabStop = false;
+            this.grpIntervalo.Text = "Intervalo entre cliques";
+            //
+            // lblMs
+            //
+            this.lblMs.AutoSize = true;
+            this.lblMs.Location = new System.Drawing.Point(142, 24);
+            this.lblMs.Name = "lblMs";
+            this.lblMs.Size = new System.Drawing.Size(84, 13);
+            this.lblMs.TabIndex = 1;
+            this.lblMs.Text = "milissegundos";
+            //
+            // numIntervalo
+            //
+            this.numIntervalo.Location = new System.Drawing.Point(15, 22);
+            this.numIntervalo.Maximum = new decimal(new int[] {
+            60000,
+            0,
+            0,
+            0});
+            this.numIntervalo.Minimum = new decimal(new int[] {
+            1,
+            0,
+            0,
+            0});
+            this.numIntervalo.Name = "numIntervalo";
+            this.numIntervalo.Size = new System.Drawing.Size(120, 20);
+            this.numIntervalo.TabIndex = 0;
+            this.numIntervalo.Value = new decimal(new int[] {
+            100,
+            0,
+            0,
+            0});
+            //
+            // btnIniciar
+            //
+            this.btnIniciar.Location = new System.Drawing.Point(12, 78);
+            this.btnIniciar.Name = "btnIniciar";
+            this.btnIniciar.Size = new System.Drawing.Size(125, 35);
+            this.btnIniciar.TabIndex = 1;
+            this.btnIniciar.Text = "Iniciar";
+            this.btnIniciar.UseVisualStyleBackColor = true;
+            this.btnIniciar.Click += new System.EventHandler(this.btnIniciar_Click);
+            //
+            // btnParar
+            //
+            this.btnParar.Enabled = false;
+            this.btnParar.Location = new System.Drawing.Point(147, 78);
+            this.btnParar.Name = "btnParar";
+            this.btnParar.Size = new System.Drawing.Size(125, 35);
+            this.btnParar.TabIndex = 2;
+            this.btnParar.Text = "Parar";
+            this.btnParar.UseVisualStyleBackColor = true;
+            this.btnParar.Click += new System.EventHandler(this.btnParar_Click);
+            //
+            // lblContagem
+            //
+            this.lblContagem.AutoSize = true;
+            this.lblContagem.Location = new System.Drawing.Point(12, 125);
+            this.lblContagem.Name = "lblContagem";
+            this.lblContagem.Size = new System.Drawing.Size(54, 13);
+            this.lblContagem.TabIndex = 3;
+            this.lblContagem.Text = "Cliques: 0";
+            //
+            // timerCliques
+            //
+            this.timerCliques.Tick += new System.EventHandler(this.timerCliques_Tick);
+            //
             // MaxClicks
-            // 
+            //
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(602, 450);
-            this.Controls.Add(this.Header);
-            this.MainMenuStrip = this.Header;
+            this.ClientSize = new System.Drawing.Size(284, 151);
+            this.Controls.Add(this.lblContagem);
+            this.Controls.Add(this.btnParar);
+            this.Controls.Add(this.btnIniciar);
+            this.Controls.Add(this.grpIntervalo);
+            this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedSingle;
+            this.MaximizeBox = false;
             this.Name = "MaxClicks";
             this.Text = "MaxClicks";
-            this.Header.ResumeLayout(false);
-            this.Header.PerformLayout();
+            this.TopMost = true;
+            this.grpIntervalo.ResumeLayout(false);
+            this.grpIntervalo.PerformLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.numIntervalo)).EndInit();
             this.ResumeLayout(false);
             this.PerformLayout();
 
         }
 
         #endregion
-        private System.Windows.Forms.MenuStrip Header;
-        private System.Windows.Forms.ToolStripMenuItem programToolStripMenuItem;
-        private System.Windows.Forms.ToolStripMenuItem exitToolStripMenuItem;
-        private System.Windows.Forms.ToolStripMenuItem clickerToolStripMenuItem;
-        private System.Windows.Forms.ToolStripMenuItem macroToolStripMenuItem;
-        private System.Windows.Forms.ToolStripMenuItem helpToolStripMenuItem;
+        private System.Windows.Forms.GroupBox grpIntervalo;
+        private System.Windows.Forms.Label lblMs;
+        private System.Windows.Forms.NumericUpDown numIntervalo;
+        private System.Windows.Forms.Button btnIniciar;
+        private System.Windows.Forms.Button btnParar;
+        private System.Windows.Forms.Label lblContagem;
+        private System.Windows.Forms.Timer timerCliques;
     }
 }
-
