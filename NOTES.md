@@ -21,13 +21,20 @@ Windows Forms auto clicker written in C# (.NET Framework 4.8). The main form is 
 - All identifiers, UI text and comments translated to English (`grpInterval`, `numInterval`, `btnStart`, `btnStop`, `lblCount`, `clickTimer`, `UpdateCount`, `UpdateButtons`). Builds with no errors or warnings.
 - `MaxClicks.cs` organized in regions: Fields, Constructor, Event Handlers, Helper Methods.
 
+- Global hotkey to start/stop (default F6), chosen by the user:
+  - `GlobalHotkey.cs` wraps `user32.dll` `RegisterHotKey` / `UnregisterHotKey` (supports Ctrl/Alt/Shift + key, no auto-repeat).
+  - "Hotkey (start / stop)" group: key shown in a bordered label + "Change" button. Clicking "Change" waits for the next key (`ProcessCmdKey`); Esc or "Cancel" keeps the old one; a combination already taken by another program shows a warning and keeps the old one.
+  - `WndProc` receives `WM_HOTKEY` and calls `ToggleClicking()`.
+  - Hotkey released in `OnFormClosed`.
+  - Start/Stop logic moved into `StartClicking()` / `StopClicking()` so buttons and hotkey share it.
+
 ## In progress
 
-- Nothing. Translation and reviewed comments in `MaxClicks.cs` awaiting the user's review.
+- Hotkey feature builds with no errors, **not tested in the running app yet**; awaiting the user's review.
 
 ## To do
 
-- [ ] Global hotkey (e.g. F6) to start/stop without moving the mouse to the Stop button.
+- [ ] Save the chosen hotkey (and interval) between runs (`Properties.Settings`).
 - [ ] Choose mouse button (left / right) and single / double click.
 - [ ] Optional click limit (stop after N clicks).
 - [ ] Consider replacing `mouse_event` with `SendInput` (the recommended API).
@@ -40,4 +47,6 @@ Windows Forms auto clicker written in C# (.NET Framework 4.8). The main form is 
 - **Window is `TopMost`, fixed size, no maximize**: the clicker stays visible over other apps.
 - **Counter resets on every Start.**
 - **Regions by role** (fields / constructor / event handlers / helpers), not by access modifier.
+- **`RegisterHotKey` instead of a keyboard hook**: simpler, and Windows delivers the key even when another app has focus. The current hotkey is unregistered while capturing a new one, otherwise Windows would swallow it.
+- **Hotkey shown in a "keycap" label inside a GroupBox**, matching the interval group, instead of a custom-styled button (keeps the native look consistent).
 - **Language**: code, comments, README, NOTES.md and commit messages in English.

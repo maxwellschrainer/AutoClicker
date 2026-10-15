@@ -52,6 +52,7 @@
     <Compile Include="MaxClicks.Designer.cs">
       <DependentUpon>MaxClicks.cs</DependentUpon>
     </Compile>
+    <Compile Include="GlobalHotkey.cs" />
     <Compile Include="Mouse.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
