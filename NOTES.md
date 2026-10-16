@@ -52,14 +52,17 @@ Windows Forms app written in C# (.NET Framework 4.8): an **Auto Clicker + Macro,
 
 - **Click limit (stop after N clicks)**:
   - New "Click limit" group (`grpLimit`) between Click and Hotkey: `chkLimit` ("Stop after") + `numLimit` (1-1,000,000, default 100, thousands separator) + "clicks" label. Window 61 px taller again (`ClientSize` 284x374, views 284x334).
-  - `clickTimer_Tick` calls `StopClicking()` when `LimitReached` (`chkLimit.Checked && count >= numLimit.Value`). Counts actions, so a double click counts as 1.
+  - `clickTimer_Tick` calls `StopClicking()` when `LimitReached` (`chkLimit.Checked && count >= numLimit.Value`). Counts real clicks (see the next item).
   - Counter shows `Clicks: N / limit` while the box is checked. `numLimit` enabled only when the box is checked; both locked while running. `chkLimit_CheckedChanged` refreshes the controls and the counter.
   - Settings `LimitEnabled` (`bool`, False) and `ClickLimit` (`int`, 100), saved in `SaveClickSettings`, clamped in `LoadSettings`.
   - Tested with the built exe: opens with the box unchecked and the number disabled (screenshot); ticked the box (BM_CLICK) -> closed -> `user.config` had `LimitEnabled` True -> reopened with the box checked, number enabled and "Clicks: 0 / 100" (screenshot). **Not tested: the automatic stop itself** (Start makes real clicks).
 
+- **Counter counts real clicks: a double click adds 2** (user's request: with 1 per Tick, single and double looked the same speed on the screen). The limit counts real clicks too; with an odd limit in double mode the last Tick is a single click (`OnlyOneClickLeft`), so it stops exactly at the limit.
+  - Tested with the real app clicking a logging test window under the cursor (interval 100): double + limit 5 -> label "5 / 5", 5 clicks received; double + limit 6 -> "6 / 6", 6 clicks, 3 double clicks recognized; single + limit 4 -> "4 / 4", 4 clicks. This also confirms the automatic stop and the double click itself.
+
 ## In progress
 
-- Review fixes (not committed): counter "/ limit" now follows the number field (`numLimit_ValueChanged`; bug: a saved limit of 500 showed "/ 100" at startup, and typing a new limit didn't update the label); `\u25BA`/`\u25C4` escapes in `MaxClicks.cs`; unused usings removed from `Program.cs`; class comment in `Mouse.cs`; docs brought up to date. The click limit's automatic stop still needs a manual test by the user (real clicks).
+- Double click counting as 2: done, waiting for the user's review (not committed).
 
 ## Next session
 
@@ -103,6 +106,7 @@ General:
 - **Exe named `MaxClicks.exe`, code still `AutoClicker`**: the user-visible name matches the app; renaming the project/namespace/repo would be churn with no gain.
 - **Settings are per exe path**: .NET stores `user.config` under a hash of the exe's path, so Debug, Release and copies elsewhere keep separate settings.
 - **Click options as DropDownList combos** (not radio buttons): compact, one row, and two radio groups would need extra panels. Code uses `SelectedIndex`, so the item texts can change freely.
-- **A double click counts as 1** in the counter: it counts actions (Ticks), which is also what a future "stop after N clicks" limit should use.
+- **A double click counts as 2** in the counter and in the limit: the screen shows what the mouse really did. (It was 1 per Tick before; changed because single and double looked the same on the counter.)
+- **Exact click limit**: with double clicks and an odd limit, the last Tick is a single click instead of going past the limit.
 - **Click limit as a CheckBox + number** (not "0 = no limit"): clearer for the user, and the last number stays saved when the limit is turned off.
 - **Language**: code, comments, README, NOTES.md and commit messages in English.

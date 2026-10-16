@@ -135,15 +135,22 @@ namespace AutoClicker
                 StartClicking();
         }
 
-        // Each tick from the timer is one click (or one double click, counted as 1)
+        // Each tick from the timer is one click or one double click. The counter counts real clicks,
+        // so a double click adds 2
         private void clickTimer_Tick(object sender, EventArgs e)
         {
-            if (SelectedDoubleClick)
+            // If the limit has room for only one more click (e.g. limit 5 with double clicks: 2 + 2 + 1),
+            // the last one is a single click, so the clicker never goes past the limit
+            if (SelectedDoubleClick && !OnlyOneClickLeft)
+            {
                 Mouse.DoubleClick(SelectedButton);
+                count += 2;
+            }
             else
+            {
                 Mouse.Click(SelectedButton);
-
-            count++;
+                count++;
+            }
             UpdateCount();
 
             // Click limit reached: stop by itself, just like pressing "Stop"
@@ -153,6 +160,9 @@ namespace AutoClicker
 
         // True when "Stop after" is checked and the counter got to the chosen number
         private bool LimitReached => chkLimit.Checked && count >= numLimit.Value;
+
+        // True when "Stop after" is checked and exactly one click is missing to reach it
+        private bool OnlyOneClickLeft => chkLimit.Checked && numLimit.Value - count == 1;
 
         // The options chosen in the "Click" group, translated from the combo boxes' positions.
         // Item 0 is "Left button" / "Single click", item 1 is "Right button" / "Double click"

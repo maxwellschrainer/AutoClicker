@@ -218,23 +218,29 @@ The movement is linear (same speed all the way). To make it faster or slower, ch
 
 **Controls:** `numInterval` (milliseconds), `cmbButton` / `cmbClickType` (click options), `chkLimit` / `numLimit` (click limit), `btnStart`, `btnStop`, `lblCount`, `clickTimer`.
 
-The **Timer** is the engine. Once started, it raises `Tick` every `Interval` milliseconds, and **each Tick is one click**:
+The **Timer** is the engine. Once started, it raises `Tick` every `Interval` milliseconds, and **each Tick is one click or one double click**:
 
 ```csharp
 private void clickTimer_Tick(object sender, EventArgs e)
 {
-    if (SelectedDoubleClick)
-        Mouse.DoubleClick(SelectedButton);   // the real click(s)
+    if (SelectedDoubleClick && !OnlyOneClickLeft)
+    {
+        Mouse.DoubleClick(SelectedButton);   // 2 real clicks
+        count += 2;
+    }
     else
-        Mouse.Click(SelectedButton);
-
-    count++;            // +1 (a double click counts as 1)
+    {
+        Mouse.Click(SelectedButton);         // 1 real click
+        count++;
+    }
     UpdateCount();      // show it
 
     if (LimitReached)   // "Stop after N clicks" reached?
         StopClicking();
 }
 ```
+
+`count += 2` is short for `count = count + 2`; `count++` is short for `count = count + 1`.
 
 | Method | Job |
 |---|---|
@@ -272,7 +278,9 @@ private bool SelectedDoubleClick => cmbClickType.SelectedIndex == 1;
 - `Click(button)` sends "press" then "release" for that button (`mouse_event` flags: left `0x0002`/`0x0004`, right `0x0008`/`0x0010`).
 - `DoubleClick(button)` just calls `Click` twice. Windows turns two clicks into a double click when they happen in the same spot within the double-click time (500 ms by default), and these happen right after each other.
 
-**Counter:** a double click counts as **1** (one action per Tick), so the counter means "how many times the clicker acted".
+**Counter:** it counts **real clicks**, so a double click adds **2**. With "Double click" at 500 ms the counter goes up by 4 per second, against 2 with "Single click". (It used to count 1 per Tick, which made both modes look the same speed on the screen.)
+
+**Single clicks can also look like double clicks:** Windows calls two clicks in the same spot a double click when they are less than the double-click time apart (500 ms by default). So "Single click" with an interval under 500 ms also makes programs see double clicks. Nothing to fix in the app: it is how Windows reads clicks.
 
 The combos are locked while running (`UpdateControls`), like the interval. In the Visual Studio Designer they look empty: the selection is set by `LoadSettings`, which doesn't run there.
 
@@ -291,7 +299,12 @@ When it is `true`, it calls `StopClicking()`, the same method the Stop button us
 - `&&` ("and") stops at the first `false`: with the box unchecked, the number is not even looked at.
 - `count` is an `int` and `numLimit.Value` a `decimal`; C# converts the `int` to `decimal` by itself to compare them (no data can be lost that way).
 - `>=` instead of `==`: safe even if `count` somehow got past the limit.
-- It counts **actions** (Ticks), so with "Double click" a limit of 10 means 10 double clicks.
+- It counts **real clicks**, like the counter. With "Double click" a limit of 10 means 5 double clicks.
+- **An odd limit with double clicks** (e.g. 5): a double click when only 1 click is missing would end at 6. So `clickTimer_Tick` checks another `=>` property first, and the last Tick does a single click instead (2 + 2 + 1 = 5):
+
+  ```csharp
+  private bool OnlyOneClickLeft => chkLimit.Checked && numLimit.Value - count == 1;
+  ```
 
 Two event handlers keep the screen in step:
 
@@ -488,7 +501,7 @@ Regions are grouped **by feature**, and inside each one the methods follow the o
 | Fields | Clicking: `count`. Hotkey: `HotkeyId`, `hotkey`, `waitingForHotkey`. Designer: `inDesigner` |
 | Constructor | `ClickerView()` |
 | Control Lifecycle | `OnLoad` (first shown), `OnVisibleChanged` (hidden/shown), `OnHandleDestroyed` (destroyed when the window closes) |
-| Clicking | `btnStart_Click`, `btnStop_Click` → `StartClicking`, `StopClicking`, `ToggleClicking` → `clickTimer_Tick` → `LimitReached`, `SelectedButton`, `SelectedDoubleClick`, `chkLimit_CheckedChanged`, `numLimit_ValueChanged` |
+| Clicking | `btnStart_Click`, `btnStop_Click` → `StartClicking`, `StopClicking`, `ToggleClicking` → `clickTimer_Tick` → `LimitReached`, `OnlyOneClickLeft`, `SelectedButton`, `SelectedDoubleClick`, `chkLimit_CheckedChanged`, `numLimit_ValueChanged` |
 | Hotkey: Choosing a New One | Steps 1–4: `btnSetHotkey_Click` → `StartHotkeyCapture` → `ProcessCmdKey` → `FinishHotkeyCapture` |
 | Hotkey: Registering and Receiving | `TryRegisterHotkey`, `WndProc`, `ShowHotkeyTakenWarning`, `HotkeyToText` |
 | Saved Settings | `LoadSettings`, `SaveHotkey`, `SaveClickSettings` |
