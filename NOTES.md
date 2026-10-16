@@ -37,19 +37,29 @@ Windows Forms app written in C# (.NET Framework 4.8): an **Auto Clicker + Macro,
 
 ## In progress
 
-- Two-screen layout and the F6 Designer fix: tested in the running app and confirmed by the user in Visual Studio (F6 back to normal after rebuild + Designer reload). Not committed yet.
+- Nothing. Everything above is committed and pushed (last commit: "Starting the creation of the macro").
+
+## Next session
+
+The user wants to **finish the Auto Clicker first**, then start the Macro. Pick from the To do list below (Auto Clicker items first) and confirm with the user which one to do.
 
 ## To do
 
-- [ ] **Macro screen**: design and implement (record/play mouse and keyboard actions?).
+Auto Clicker (finish first):
 - [ ] Save the chosen hotkey (and interval) between runs (`Properties.Settings`).
 - [ ] Choose mouse button (left / right) and single / double click.
 - [ ] Optional click limit (stop after N clicks).
 - [ ] Consider replacing `mouse_event` with `SendInput` (the recommended API).
+
+Macro (after the Auto Clicker):
+- [ ] **Macro screen**: design and implement in `MacroView` (record/play mouse and keyboard actions? to be defined with the user). It will need its own hotkey(s): follow the `ClickerView` pattern, use a different hotkey id, and skip registration in the Designer.
+
+General:
 - [ ] If the slide flickers too much on some PCs, try double buffering (`WS_EX_COMPOSITED`) on the form.
 
 ## Documentation
 
+- `CLAUDE.md`: how to work on the project (session routine, build command, gotchas, how to test, conventions). **Read first.**
 - `README.md`: what the app is and how to use it.
 - `docs/HOW-IT-WORKS.md`: manual of the code (files, concepts, each feature's flow, glossary). **Update it whenever a feature or concept is added or changed.**
 
