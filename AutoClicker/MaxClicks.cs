@@ -3,22 +3,28 @@ using System.Windows.Forms;
 
 namespace AutoClicker
 {
+    // The main window: a header with the title and the switch button, and below it
+    // the area (pnlViews) where one of the two screens is shown: ClickerView or MacroView
     public partial class MaxClicks : Form
     {
         #region Fields
 
-        // Number of clicks since the last Start
-        private int count = 0;
+        // Screen on display right now
+        private UserControl currentView;
 
-        // Id we give Windows for our hotkey (any number, it only has to be unique in this app)
-        private const int HotkeyId = 1;
+        // Screen sliding in during the animation
+        private UserControl nextView;
 
-        // Current hotkey: key + modifiers (e.g. Keys.Control | Keys.F6).
-        // Keys.None means no hotkey is registered
-        private Keys hotkey = Keys.F6;
+        // --- Slide animation ---
 
-        // True while we wait for the user to press the new hotkey
-        private bool waitingForHotkey = false;
+        // How many timer ticks the slide takes (12 x ~15 ms = about 0.2 seconds)
+        private const int SlideSteps = 12;
+
+        // Which tick of the slide we are on (0 to SlideSteps)
+        private int slideStep;
+
+        // 1 = the new screen comes in from the right, -1 = from the left
+        private int slideDirection;
 
         #endregion
 
@@ -26,203 +32,78 @@ namespace AutoClicker
         public MaxClicks()
         {
             InitializeComponent();
+
+            currentView = clickerView;
+            UpdateHeader();
         }
         #endregion
 
-        #region Form Overrides
+        #region Switching Screens
 
-        // Runs once when the window is shown: register the default hotkey
-        protected override void OnLoad(EventArgs e)
+        // Runs when the switch button is clicked: slide to the other screen
+        private void btnSwitchView_Click(object sender, EventArgs e)
         {
-            base.OnLoad(e);
-
-            if (!TryRegisterHotkey(hotkey))
-            {
-                ShowHotkeyTakenWarning(hotkey);
-                hotkey = Keys.None; // So the screen doesn't show a hotkey that doesn't work
-            }
-            UpdateControls();
-        }
-
-        // Release the hotkey when the window closes, so Windows frees it for other programs
-        protected override void OnFormClosed(FormClosedEventArgs e)
-        {
-            GlobalHotkey.Unregister(Handle, HotkeyId);
-            base.OnFormClosed(e);
-        }
-
-        // Every message Windows sends to the window goes through here.
-        // We only care about WM_HOTKEY: our hotkey was pressed (even with another app in focus)
-        protected override void WndProc(ref Message m)
-        {
-            if (m.Msg == GlobalHotkey.WM_HOTKEY && (int)m.WParam == HotkeyId)
-            {
-                ToggleClicking();
-            }
-            base.WndProc(ref m);
-        }
-
-        // Receives every key pressed in the window before the controls do.
-        // While waiting for a new hotkey, we take the key here instead of letting it reach the buttons
-        protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
-        {
-            if (!waitingForHotkey)
-                return base.ProcessCmdKey(ref msg, keyData);
-
-            Keys key = keyData & Keys.KeyCode; // The key without Ctrl/Alt/Shift
-
-            if (key == Keys.Escape)
-            {
-                FinishHotkeyCapture(hotkey); // Cancel: keep the old hotkey
-            }
-            // If only a modifier was pressed so far (e.g. just Ctrl), keep waiting for the real key
-            else if (key != Keys.ControlKey && key != Keys.ShiftKey && key != Keys.Menu
-                     && key != Keys.LWin && key != Keys.RWin)
-            {
-                FinishHotkeyCapture(keyData);
-            }
-            return true; // true = "already handled", the key goes nowhere else
-        }
-
-        #endregion
-
-        #region Event Handlers
-
-        // Runs when the "Start" button is clicked
-        private void btnStart_Click(object sender, EventArgs e)
-        {
-            StartClicking();
-        }
-
-        // Runs when the "Stop" button is clicked
-        private void btnStop_Click(object sender, EventArgs e)
-        {
-            StopClicking();
-        }
-
-        // Each tick from the timer is one click
-        private void clickTimer_Tick(object sender, EventArgs e)
-        {
-            Mouse.LeftClick();
-            count++;
-            UpdateCount();
-        }
-
-        // First click: start waiting for the new hotkey. Clicking again (now "Cancel") gives up
-        private void btnSetHotkey_Click(object sender, EventArgs e)
-        {
-            if (waitingForHotkey)
-                FinishHotkeyCapture(hotkey);
+            if (currentView == clickerView)
+                SlideTo(macroView, 1);      // Clicker -> Macro: comes in from the right
             else
-                StartHotkeyCapture();
+                SlideTo(clickerView, -1);   // Macro -> Clicker: comes back from the left
         }
 
-        #endregion
-
-        #region Clicking
-
-        private void StartClicking()
+        // Puts the new screen just outside the visible area and starts the animation
+        private void SlideTo(UserControl view, int direction)
         {
-            count = 0; // Reset the counter on every Start
-            UpdateCount();
+            nextView = view;
+            slideDirection = direction;
+            slideStep = 0;
 
-            // Set the timer interval to the value typed in the milliseconds field
-            clickTimer.Interval = (int)numInterval.Value;
-            clickTimer.Start();
+            nextView.Left = direction * pnlViews.Width; // Right outside the edge
+            nextView.Visible = true;
 
-            UpdateControls();
+            btnSwitchView.Enabled = false; // No double click in the middle of the slide
+            slideTimer.Start();
         }
 
-        private void StopClicking()
+        // Each tick moves both screens a little: the current one goes out, the next one comes in
+        private void slideTimer_Tick(object sender, EventArgs e)
         {
-            clickTimer.Stop();
-            UpdateControls();
+            slideStep++;
+
+            int width = pnlViews.Width;
+            int offset = width * slideStep / SlideSteps; // How far we have moved so far
+
+            currentView.Left = -slideDirection * offset;
+            nextView.Left = slideDirection * (width - offset);
+
+            if (slideStep == SlideSteps)
+                FinishSlide();
         }
 
-        // Used by the hotkey: the same key starts and stops
-        private void ToggleClicking()
+        // The new screen is in place: hide the old one and update the header
+        private void FinishSlide()
         {
-            if (clickTimer.Enabled)
-                StopClicking();
-            else
-                StartClicking();
-        }
+            slideTimer.Stop();
 
-        #endregion
+            currentView.Visible = false;
+            currentView.Left = 0;
 
-        #region Hotkey
+            currentView = nextView;
+            nextView = null;
 
-        private void StartHotkeyCapture()
-        {
-            // Unregister the current one, otherwise Windows would catch it before our window sees it
-            GlobalHotkey.Unregister(Handle, HotkeyId);
-            waitingForHotkey = true;
-            UpdateControls();
-        }
-
-        // Tries to register the new hotkey; if another program already uses it, keeps the old one
-        private void FinishHotkeyCapture(Keys newHotkey)
-        {
-            waitingForHotkey = false;
-
-            if (TryRegisterHotkey(newHotkey))
-            {
-                hotkey = newHotkey;
-            }
-            else
-            {
-                ShowHotkeyTakenWarning(newHotkey);
-                if (!TryRegisterHotkey(hotkey))
-                    hotkey = Keys.None;
-            }
-
-            UpdateControls();
-        }
-
-        // Keys.None means "no hotkey", so there is nothing to register
-        private bool TryRegisterHotkey(Keys keys)
-        {
-            return keys != Keys.None && GlobalHotkey.Register(Handle, HotkeyId, keys);
-        }
-
-        private void ShowHotkeyTakenWarning(Keys keys)
-        {
-            MessageBox.Show("The hotkey " + HotkeyToText(keys) + " is already used by another program.\nChoose another one.",
-                "MaxClicks", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-        }
-
-        // Turns Keys.Control | Keys.F6 into "Ctrl+F6"
-        private static string HotkeyToText(Keys keys)
-        {
-            if (keys == Keys.None)
-                return "(none)";
-
-            return new KeysConverter().ConvertToString(keys);
+            btnSwitchView.Enabled = true;
+            UpdateHeader();
         }
 
         #endregion
 
         #region UI Updates
 
-        private void UpdateCount()
+        // Title shows where you are, the button shows where it takes you
+        private void UpdateHeader()
         {
-            lblCount.Text = "Clicks: " + count;
-        }
+            bool onClicker = currentView == clickerView;
 
-        // The ONLY place that enables/disables controls and changes the hotkey texts.
-        // It reads the current state (timer running? waiting for a hotkey?) and adjusts everything to match
-        private void UpdateControls()
-        {
-            bool running = clickTimer.Enabled;
-
-            // While running: only "Stop" is enabled, the interval and the hotkey are locked
-            btnStart.Enabled = !running && !waitingForHotkey;
-            btnStop.Enabled = running;
-            numInterval.Enabled = !running;
-            btnSetHotkey.Enabled = !running;
-
-            btnSetHotkey.Text = waitingForHotkey ? "Cancel" : "Change";
-            lblHotkey.Text = waitingForHotkey ? "Press a key..." : HotkeyToText(hotkey);
+            lblTitle.Text = onClicker ? "Auto Clicker" : "Macro";
+            btnSwitchView.Text = onClicker ? "Macro  ►" : "◄  Clicker"; // ► and ◄ arrows
         }
 
         #endregion

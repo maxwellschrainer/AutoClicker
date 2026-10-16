@@ -1,12 +1,15 @@
 # MaxClicks
 
-A simple auto clicker for Windows, written in C# with Windows Forms (.NET Framework 4.8).
+An auto clicker and macro tool for Windows, two in one, written in C# with Windows Forms (.NET Framework 4.8).
 
 ## Features
 
-- Left click at a configurable interval (1–60000 ms).
-- Click counter.
-- Global hotkey to start/stop from any program (default **F6**, changeable with Ctrl/Alt/Shift combinations).
+- **Auto Clicker**
+  - Left click at a configurable interval (1–60000 ms).
+  - Click counter.
+  - Global hotkey to start/stop from any program (default **F6**, any key or Ctrl/Alt/Shift combination).
+- **Macro**: coming soon.
+- One window, two screens: the button in the header slides between Auto Clicker and Macro.
 - Window stays on top of other apps.
 
 ## Usage

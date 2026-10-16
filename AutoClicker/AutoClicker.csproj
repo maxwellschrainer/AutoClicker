@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
   <PropertyGroup>
@@ -52,7 +52,19 @@
     <Compile Include="MaxClicks.Designer.cs">
       <DependentUpon>MaxClicks.cs</DependentUpon>
     </Compile>
+    <Compile Include="ClickerView.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="ClickerView.Designer.cs">
+      <DependentUpon>ClickerView.cs</DependentUpon>
+    </Compile>
     <Compile Include="GlobalHotkey.cs" />
+    <Compile Include="MacroView.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="MacroView.Designer.cs">
+      <DependentUpon>MacroView.cs</DependentUpon>
+    </Compile>
     <Compile Include="Mouse.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
