@@ -23,15 +23,10 @@ Guide for AI assistants (and humans) continuing this project. Read this first, t
   | Workflow, layout, gotchas | this file |
 
 - Keep NOTES.md "Next session" accurate: anyone opening the project must know where it stands and what comes next.
-- Suggest improvements/optimizations you noticed (code, structure, docs), even outside the current step. Add the ones not done now to the To do list.
-- Don't commit unless asked: the user usually commits and pushes themselves.
-- Commit messages: no `Co-Authored-By` or other AI attribution lines.
 
-## The user
+## Language
 
-- Beginner learning C# through this project. Explain every change step by step (what, why, which C# concept) **in Portuguese (pt-BR)**.
-- Code, comments, UI text, docs and commit messages **in English**.
-- They like to review before moving on: show what changed, then wait for feedback before the next feature.
+Code, comments, UI text, docs and commit messages **in English**. The owner's personal preferences (explanations in pt-BR, step-by-step teaching, git rules) live in their global `~/.claude/CLAUDE.md`.
 
 ## Repository layout
 

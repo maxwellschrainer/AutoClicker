@@ -184,7 +184,7 @@ private bool SelectedDoubleClick => cmbClickType.SelectedIndex == 1;
 - `Click(button)` sends "press" then "release" for that button (`mouse_event` flags: left `0x0002`/`0x0004`, right `0x0008`/`0x0010`).
 - `DoubleClick(button)` just calls `Click` twice. Windows turns two clicks into a double click when they happen in the same spot within the double-click time (500 ms by default), and these happen right after each other.
 
-**Counter:** it counts **real clicks**, so a double click adds **2**. With "Double click" at 500 ms the counter goes up by 4 per second, against 2 with "Single click". (It used to count 1 per Tick, which made both modes look the same speed on the screen.)
+**Counter:** it counts **real clicks**, so a double click adds **2**. With "Double click" at 500 ms the counter goes up by 4 per second, against 2 with "Single click".
 
 **Single clicks can also look like double clicks:** Windows calls two clicks in the same spot a double click when they are less than the double-click time apart (500 ms by default). So "Single click" with an interval under 500 ms also makes programs see double clicks. Nothing to fix in the app: it is how Windows reads clicks.
 
@@ -360,7 +360,6 @@ The hotkey, the interval, the click options and the click limit are remembered b
 
 - `<hash>` comes from the **exe's path**, so `bin\Debug` and `bin\Release` (or a copy elsewhere) each have their **own** saved settings.
 - `1.0.0.0` is the assembly version (`AssemblyInfo.cs`). If it changes, the app starts again from the defaults.
-- Before the exe was renamed to `MaxClicks.exe` it was `AutoClicker.exe`, so old folders named `AutoClicker.exe_Url_...` are no longer used and can be deleted.
 
 To reset to the defaults, close the app and delete that folder.
 
