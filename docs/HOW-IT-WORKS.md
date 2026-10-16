@@ -129,11 +129,11 @@ private void clickTimer_Tick(object sender, EventArgs e)
 
 | Method | Job |
 |---|---|
-| `StartClicking()` | Resets `count`, copies the interval into the timer, starts the timer, updates the buttons. |
-| `StopClicking()` | Stops the timer, updates the buttons. |
+| `StartClicking()` | Resets `count`, copies the interval into the timer, starts the timer, updates the controls. |
+| `StopClicking()` | Stops the timer, updates the controls. |
 | `ToggleClicking()` | Start if stopped, stop if running (used by the hotkey). |
 | `UpdateCount()` | Writes `"Clicks: N"` in the label. |
-| `UpdateButtons(running)` | While running: only Stop is enabled; interval and hotkey are locked. |
+| `UpdateControls()` | See [One place for the screen state](#one-place-for-the-screen-state). |
 
 The Start/Stop buttons and the hotkey all call these same methods, so the logic exists in one place only.
 
@@ -183,25 +183,39 @@ Receives every key pressed in the window **before** the controls do (including T
 - `waitingForHotkey == true` →
   - **Esc** → cancel, keep the old hotkey.
   - **Only Ctrl / Shift / Alt / Win** → ignore, keep waiting (so combinations like `Ctrl+F6` work).
-  - **Any other key** → `FinishHotkeyCapture(keyData)`.
+  - **Any other key** → if `IsAllowedHotkey(keyData)`: `FinishHotkeyCapture(keyData)`; otherwise a message explains the rule and it keeps waiting.
   - Returns `true` = "handled", so the key does not reach any button.
 
 `keyData` contains the key **plus** the modifiers. `keyData & Keys.KeyCode` keeps only the key.
+
+### Which keys are allowed (`IsAllowedHotkey`)
+
+A global hotkey **steals the key from every program**. If the hotkey were `A`, you could not type the letter "a" anywhere while MaxClicks is open. So only these are accepted:
+
+- **F1 to F24**, alone or with modifiers (`F6`, `Shift+F6`...).
+- **Any key combined with Ctrl or Alt** (`Ctrl+A`, `Alt+1`...).
+
+Shift alone is not enough: `Shift+A` is how you type a capital "A".
+
+### No hotkey (`Keys.None`)
+
+If registering fails and the old hotkey can't be registered either (e.g. F6 is already taken when the app opens), `hotkey` becomes `Keys.None` and the screen shows **(none)**, so it never shows a hotkey that doesn't work. `TryRegisterHotkey` skips `Keys.None`, since there is nothing to register.
 
 ### Lifecycle
 
 ```
 App opens
-  └─> OnLoad ─> Register(F6)        (warning if another program already uses it)
+  └─> OnLoad ─> Register(F6)        (if another program already uses it: warning, hotkey = none)
 
 User clicks "Change"
-  └─> btnSetHotkey_Click ─> Unregister current, waitingForHotkey = true
+  └─> btnSetHotkey_Click ─> StartHotkeyCapture ─> Unregister current, waitingForHotkey = true
         (the current key must be released, or Windows would catch it before the window sees it)
 
 User presses Ctrl+F7
-  └─> ProcessCmdKey ─> FinishHotkeyCapture
-        ├─ Register(Ctrl+F7) ok   → becomes the hotkey
-        └─ Register fails         → warning, Register(old one) again
+  └─> ProcessCmdKey ─> IsAllowedHotkey? (no → message, keep waiting)
+        └─> FinishHotkeyCapture
+              ├─ Register(Ctrl+F7) ok   → becomes the hotkey
+              └─ Register fails         → warning, Register(old one) again (fails too → none)
 
 User presses Ctrl+F7 anywhere in Windows
   └─> Windows sends WM_HOTKEY ─> WndProc ─> ToggleClicking ─> Start / Stop
@@ -214,6 +228,27 @@ App closes
 
 ---
 
+## One place for the screen state
+
+`UpdateControls()` is the **only** method that enables/disables controls and changes the hotkey texts. It does not receive the state as a parameter; it **reads** it:
+
+```csharp
+bool running = clickTimer.Enabled;   // is the timer running?
+// ...and the waitingForHotkey field
+```
+
+and sets every control to match:
+
+| State | Start | Stop | Interval | Change button | Hotkey label |
+|---|---|---|---|---|---|
+| Stopped | on | off | on | on, "Change" | current hotkey |
+| Running | off | on | off | off | current hotkey |
+| Waiting for a hotkey | off | off | on | on, "Cancel" | "Press a key..." |
+
+Every method that changes the state (`StartClicking`, `StopClicking`, `StartHotkeyCapture`, `FinishHotkeyCapture`, `OnLoad`) just calls `UpdateControls()` at the end. When a new state or control appears, only this method changes.
+
+---
+
 ## `MaxClicks.cs` layout (regions)
 
 | Region | Contains |
@@ -222,7 +257,9 @@ App closes
 | Constructor | `MaxClicks()` |
 | Form Overrides | `OnLoad`, `OnFormClosed`, `WndProc`, `ProcessCmdKey`: replacements of `Form` behavior |
 | Event Handlers | `btnStart_Click`, `btnStop_Click`, `clickTimer_Tick`, `btnSetHotkey_Click` |
-| Helper Methods | `StartClicking`, `StopClicking`, `ToggleClicking`, `FinishHotkeyCapture`, `UpdateHotkeyLabel`, `HotkeyToText`, `UpdateCount`, `UpdateButtons` |
+| Clicking | `StartClicking`, `StopClicking`, `ToggleClicking` |
+| Hotkey | `StartHotkeyCapture`, `FinishHotkeyCapture`, `TryRegisterHotkey`, `IsAllowedHotkey`, `ShowHotkeyTakenWarning`, `HotkeyToText` |
+| UI Updates | `UpdateCount`, `UpdateControls` |
 
 `#region` changes nothing in the program; it only lets the editor fold blocks.
 

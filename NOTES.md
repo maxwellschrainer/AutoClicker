@@ -19,7 +19,7 @@ Windows Forms auto clicker written in C# (.NET Framework 4.8). The main form is 
 - Clicking loop: Start sets `Timer.Interval` from the input and starts the timer; each `Tick` calls `Mouse.LeftClick()` and increments the counter; Stop stops the timer.
 - While running, only Stop is enabled and the interval input is locked.
 - All identifiers, UI text and comments translated to English (`grpInterval`, `numInterval`, `btnStart`, `btnStop`, `lblCount`, `clickTimer`, `UpdateCount`, `UpdateButtons`). Builds with no errors or warnings.
-- `MaxClicks.cs` organized in regions: Fields, Constructor, Form Overrides, Event Handlers, Helper Methods.
+- `MaxClicks.cs` organized in regions by subject: Fields, Constructor, Form Overrides, Event Handlers, Clicking, Hotkey, UI Updates.
 - `Mouse.cs` moved into the `AutoClicker` namespace.
 - Global hotkey to start/stop (default F6), chosen by the user:
   - `GlobalHotkey.cs` wraps `user32.dll` `RegisterHotKey` / `UnregisterHotKey` (supports Ctrl/Alt/Shift + key, no auto-repeat).
@@ -27,11 +27,15 @@ Windows Forms auto clicker written in C# (.NET Framework 4.8). The main form is 
   - `WndProc` receives `WM_HOTKEY` and calls `ToggleClicking()`.
   - Hotkey released in `OnFormClosed`.
   - Start/Stop logic moved into `StartClicking()` / `StopClicking()` so buttons and hotkey share it.
+- Review fixes:
+  - Only F1–F24 or Ctrl/Alt combinations are accepted as hotkey (`IsAllowedHotkey`), so a single key isn't stolen from every program.
+  - If the hotkey can't be registered, it becomes `Keys.None` and the screen shows "(none)".
+  - `UpdateControls()` (replaces `UpdateButtons(running)`) is the only place that enables/disables controls and sets the hotkey texts; it reads the state instead of receiving it.
+  - Duplicated warning moved into `ShowHotkeyTakenWarning()`.
 
 ## In progress
 
-- Nothing. Hotkey feature committed and pushed.
-- `README.md` and `docs/HOW-IT-WORKS.md` (code manual) created, not committed yet.
+- Review fixes build with no errors, **not tested in the running app yet**, not committed; awaiting the user's review.
 
 ## To do
 
@@ -51,7 +55,9 @@ Windows Forms auto clicker written in C# (.NET Framework 4.8). The main form is 
 - **`System.Windows.Forms.Timer`** (not `System.Timers.Timer`): it raises `Tick` on the UI thread, so controls can be updated directly without cross-thread calls.
 - **Window is `TopMost`, fixed size, no maximize**: the clicker stays visible over other apps.
 - **Counter resets on every Start.**
-- **Regions by role** (fields / constructor / event handlers / helpers), not by access modifier.
+- **Regions by role and subject** (fields / constructor / overrides / event handlers / clicking / hotkey / UI updates), not by access modifier.
 - **`RegisterHotKey` instead of a keyboard hook**: simpler, and Windows delivers the key even when another app has focus. The current hotkey is unregistered while capturing a new one, otherwise Windows would swallow it.
 - **Hotkey shown in a "keycap" label inside a GroupBox**, matching the interval group, instead of a custom-styled button (keeps the native look consistent).
+- **Hotkey rule: F1–F24 or Ctrl/Alt + key.** Global hotkeys block the key everywhere; Shift alone isn't enough (Shift+letter types capitals).
+- **Screen state derived in one method** (`UpdateControls`) from `clickTimer.Enabled` and `waitingForHotkey`, instead of each method toggling controls.
 - **Language**: code, comments, README, NOTES.md and commit messages in English.

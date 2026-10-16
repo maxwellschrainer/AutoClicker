@@ -13,7 +13,8 @@ namespace AutoClicker
         // Id we give Windows for our hotkey (any number, it only has to be unique in this app)
         private const int HotkeyId = 1;
 
-        // Current hotkey: key + modifiers (e.g. Keys.Control | Keys.F6)
+        // Current hotkey: key + modifiers (e.g. Keys.Control | Keys.F6).
+        // Keys.None means no hotkey is registered
         private Keys hotkey = Keys.F6;
 
         // True while we wait for the user to press the new hotkey
@@ -35,12 +36,12 @@ namespace AutoClicker
         {
             base.OnLoad(e);
 
-            if (!GlobalHotkey.Register(Handle, HotkeyId, hotkey))
+            if (!TryRegisterHotkey(hotkey))
             {
-                MessageBox.Show("The hotkey " + HotkeyToText(hotkey) + " is already used by another program.\nChoose another one.",
-                    "MaxClicks", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                ShowHotkeyTakenWarning(hotkey);
+                hotkey = Keys.None; // So the screen doesn't show a hotkey that doesn't work
             }
-            UpdateHotkeyLabel();
+            UpdateControls();
         }
 
         // Release the hotkey when the window closes, so Windows frees it for other programs
@@ -78,7 +79,17 @@ namespace AutoClicker
             else if (key != Keys.ControlKey && key != Keys.ShiftKey && key != Keys.Menu
                      && key != Keys.LWin && key != Keys.RWin)
             {
-                FinishHotkeyCapture(keyData);
+                if (IsAllowedHotkey(keyData))
+                {
+                    FinishHotkeyCapture(keyData);
+                }
+                else
+                {
+                    // Keep waiting: the user can try another key right away
+                    MessageBox.Show("Use a function key (F1-F24) or a combination with Ctrl or Alt.\n" +
+                        "A single key like \"A\" would be blocked in every other program while MaxClicks is open.",
+                        "MaxClicks", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                }
             }
             return true; // true = "already handled", the key goes nowhere else
         }
@@ -93,6 +104,7 @@ namespace AutoClicker
             StartClicking();
         }
 
+        // Runs when the "Stop" button is clicked
         private void btnStop_Click(object sender, EventArgs e)
         {
             StopClicking();
@@ -110,23 +122,14 @@ namespace AutoClicker
         private void btnSetHotkey_Click(object sender, EventArgs e)
         {
             if (waitingForHotkey)
-            {
                 FinishHotkeyCapture(hotkey);
-                return;
-            }
-
-            // Unregister the current one, otherwise Windows would catch it before our window sees it
-            GlobalHotkey.Unregister(Handle, HotkeyId);
-            waitingForHotkey = true;
-
-            lblHotkey.Text = "Press a key...";
-            btnSetHotkey.Text = "Cancel";
-            btnStart.Enabled = false;
+            else
+                StartHotkeyCapture();
         }
 
         #endregion
 
-        #region Helper Methods
+        #region Clicking
 
         private void StartClicking()
         {
@@ -137,13 +140,13 @@ namespace AutoClicker
             clickTimer.Interval = (int)numInterval.Value;
             clickTimer.Start();
 
-            UpdateButtons(running: true);
+            UpdateControls();
         }
 
         private void StopClicking()
         {
             clickTimer.Stop();
-            UpdateButtons(running: false);
+            UpdateControls();
         }
 
         // Used by the hotkey: the same key starts and stops
@@ -155,51 +158,93 @@ namespace AutoClicker
                 StartClicking();
         }
 
+        #endregion
+
+        #region Hotkey
+
+        private void StartHotkeyCapture()
+        {
+            // Unregister the current one, otherwise Windows would catch it before our window sees it
+            GlobalHotkey.Unregister(Handle, HotkeyId);
+            waitingForHotkey = true;
+            UpdateControls();
+        }
+
         // Tries to register the new hotkey; if another program already uses it, keeps the old one
         private void FinishHotkeyCapture(Keys newHotkey)
         {
             waitingForHotkey = false;
 
-            if (GlobalHotkey.Register(Handle, HotkeyId, newHotkey))
+            if (TryRegisterHotkey(newHotkey))
             {
                 hotkey = newHotkey;
             }
             else
             {
-                MessageBox.Show("The hotkey " + HotkeyToText(newHotkey) + " is already used by another program.\nChoose another one.",
-                    "MaxClicks", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                GlobalHotkey.Register(Handle, HotkeyId, hotkey);
+                ShowHotkeyTakenWarning(newHotkey);
+                if (!TryRegisterHotkey(hotkey))
+                    hotkey = Keys.None;
             }
 
-            btnSetHotkey.Text = "Change";
-            btnStart.Enabled = true;
-            UpdateHotkeyLabel();
+            UpdateControls();
         }
 
-        private void UpdateHotkeyLabel()
+        // Keys.None means "no hotkey", so there is nothing to register
+        private bool TryRegisterHotkey(Keys keys)
         {
-            lblHotkey.Text = HotkeyToText(hotkey);
+            return keys != Keys.None && GlobalHotkey.Register(Handle, HotkeyId, keys);
+        }
+
+        // A global hotkey steals the key from every program, so a single letter or Space
+        // would stop working everywhere. Only F1-F24 alone, or combinations with Ctrl/Alt, are allowed.
+        // (Shift alone isn't enough: Shift+A is how you type a capital "A")
+        private static bool IsAllowedHotkey(Keys keyData)
+        {
+            Keys key = keyData & Keys.KeyCode;
+            bool isFunctionKey = key >= Keys.F1 && key <= Keys.F24;
+            bool hasCtrlOrAlt = (keyData & Keys.Control) == Keys.Control || (keyData & Keys.Alt) == Keys.Alt;
+
+            return isFunctionKey || hasCtrlOrAlt;
+        }
+
+        private void ShowHotkeyTakenWarning(Keys keys)
+        {
+            MessageBox.Show("The hotkey " + HotkeyToText(keys) + " is already used by another program.\nChoose another one.",
+                "MaxClicks", MessageBoxButtons.OK, MessageBoxIcon.Warning);
         }
 
         // Turns Keys.Control | Keys.F6 into "Ctrl+F6"
         private static string HotkeyToText(Keys keys)
         {
+            if (keys == Keys.None)
+                return "(none)";
+
             return new KeysConverter().ConvertToString(keys);
         }
+
+        #endregion
+
+        #region UI Updates
 
         private void UpdateCount()
         {
             lblCount.Text = "Clicks: " + count;
         }
 
-        // Enables/disables the controls depending on whether the clicker is running
-        // (while running: only "Stop" is enabled, the interval and the hotkey are locked)
-        private void UpdateButtons(bool running)
+        // The ONLY place that enables/disables controls and changes the hotkey texts.
+        // It reads the current state (timer running? waiting for a hotkey?) and adjusts everything to match
+        private void UpdateControls()
         {
-            btnStart.Enabled = !running;
+            bool running = clickTimer.Enabled;
+
+            // While running: only "Stop" is enabled, the interval and the hotkey are locked
+            btnStart.Enabled = !running && !waitingForHotkey;
             btnStop.Enabled = running;
             numInterval.Enabled = !running;
             btnSetHotkey.Enabled = !running;
+
+            btnSetHotkey.Text = waitingForHotkey ? "Cancel" : "Change";
+            lblHotkey.Text = waitingForHotkey ? "Press a key..." : HotkeyToText(hotkey);
         }
 
         #endregion
