@@ -39,9 +39,13 @@
             this.grpHotkey = new System.Windows.Forms.GroupBox();
             this.btnSetHotkey = new System.Windows.Forms.Button();
             this.lblHotkey = new System.Windows.Forms.Label();
+            this.grpClick = new System.Windows.Forms.GroupBox();
+            this.cmbClickType = new System.Windows.Forms.ComboBox();
+            this.cmbButton = new System.Windows.Forms.ComboBox();
             this.grpInterval.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.numInterval)).BeginInit();
             this.grpHotkey.SuspendLayout();
+            this.grpClick.SuspendLayout();
             this.SuspendLayout();
             // 
             // grpInterval
@@ -73,7 +77,7 @@
             0,
             0});
             this.numInterval.Minimum = new decimal(new int[] {
-            1,
+            15,
             0,
             0,
             0});
@@ -88,10 +92,10 @@
             // 
             // btnStart
             // 
-            this.btnStart.Location = new System.Drawing.Point(12, 139);
+            this.btnStart.Location = new System.Drawing.Point(12, 200);
             this.btnStart.Name = "btnStart";
             this.btnStart.Size = new System.Drawing.Size(125, 35);
-            this.btnStart.TabIndex = 2;
+            this.btnStart.TabIndex = 3;
             this.btnStart.Text = "Start";
             this.btnStart.UseVisualStyleBackColor = true;
             this.btnStart.Click += new System.EventHandler(this.btnStart_Click);
@@ -99,10 +103,10 @@
             // btnStop
             // 
             this.btnStop.Enabled = false;
-            this.btnStop.Location = new System.Drawing.Point(147, 139);
+            this.btnStop.Location = new System.Drawing.Point(147, 200);
             this.btnStop.Name = "btnStop";
             this.btnStop.Size = new System.Drawing.Size(125, 35);
-            this.btnStop.TabIndex = 3;
+            this.btnStop.TabIndex = 4;
             this.btnStop.Text = "Stop";
             this.btnStop.UseVisualStyleBackColor = true;
             this.btnStop.Click += new System.EventHandler(this.btnStop_Click);
@@ -110,10 +114,10 @@
             // lblCount
             // 
             this.lblCount.AutoSize = true;
-            this.lblCount.Location = new System.Drawing.Point(12, 186);
+            this.lblCount.Location = new System.Drawing.Point(12, 247);
             this.lblCount.Name = "lblCount";
             this.lblCount.Size = new System.Drawing.Size(47, 13);
-            this.lblCount.TabIndex = 4;
+            this.lblCount.TabIndex = 5;
             this.lblCount.Text = "Clicks: 0";
             // 
             // clickTimer
@@ -124,10 +128,10 @@
             // 
             this.grpHotkey.Controls.Add(this.btnSetHotkey);
             this.grpHotkey.Controls.Add(this.lblHotkey);
-            this.grpHotkey.Location = new System.Drawing.Point(12, 73);
+            this.grpHotkey.Location = new System.Drawing.Point(12, 134);
             this.grpHotkey.Name = "grpHotkey";
             this.grpHotkey.Size = new System.Drawing.Size(260, 55);
-            this.grpHotkey.TabIndex = 1;
+            this.grpHotkey.TabIndex = 2;
             this.grpHotkey.TabStop = false;
             this.grpHotkey.Text = "Hotkey (start / stop)";
             // 
@@ -153,11 +157,47 @@
             this.lblHotkey.Text = "F6";
             this.lblHotkey.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
             // 
+            // grpClick
+            // 
+            this.grpClick.Controls.Add(this.cmbClickType);
+            this.grpClick.Controls.Add(this.cmbButton);
+            this.grpClick.Location = new System.Drawing.Point(12, 73);
+            this.grpClick.Name = "grpClick";
+            this.grpClick.Size = new System.Drawing.Size(260, 55);
+            this.grpClick.TabIndex = 1;
+            this.grpClick.TabStop = false;
+            this.grpClick.Text = "Click";
+            // 
+            // cmbClickType
+            // 
+            this.cmbClickType.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+            this.cmbClickType.FormattingEnabled = true;
+            this.cmbClickType.Items.AddRange(new object[] {
+            "Single click",
+            "Double click"});
+            this.cmbClickType.Location = new System.Drawing.Point(135, 21);
+            this.cmbClickType.Name = "cmbClickType";
+            this.cmbClickType.Size = new System.Drawing.Size(110, 21);
+            this.cmbClickType.TabIndex = 1;
+            // 
+            // cmbButton
+            // 
+            this.cmbButton.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+            this.cmbButton.FormattingEnabled = true;
+            this.cmbButton.Items.AddRange(new object[] {
+            "Left button",
+            "Right button"});
+            this.cmbButton.Location = new System.Drawing.Point(15, 21);
+            this.cmbButton.Name = "cmbButton";
+            this.cmbButton.Size = new System.Drawing.Size(110, 21);
+            this.cmbButton.TabIndex = 0;
+            // 
             // ClickerView
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.Size = new System.Drawing.Size(284, 212);
+            this.Size = new System.Drawing.Size(284, 273);
+            this.Controls.Add(this.grpClick);
             this.Controls.Add(this.lblCount);
             this.Controls.Add(this.btnStop);
             this.Controls.Add(this.btnStart);
@@ -168,6 +208,7 @@
             this.grpInterval.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)(this.numInterval)).EndInit();
             this.grpHotkey.ResumeLayout(false);
+            this.grpClick.ResumeLayout(false);
             this.ResumeLayout(false);
             this.PerformLayout();
 
@@ -184,5 +225,8 @@
         private System.Windows.Forms.GroupBox grpHotkey;
         private System.Windows.Forms.Label lblHotkey;
         private System.Windows.Forms.Button btnSetHotkey;
+        private System.Windows.Forms.GroupBox grpClick;
+        private System.Windows.Forms.ComboBox cmbButton;
+        private System.Windows.Forms.ComboBox cmbClickType;
     }
 }

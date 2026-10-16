@@ -21,7 +21,7 @@ The Auto Clicker screen does three things:
                                             ├─ starts the Timer
                                             │
  Timer ──Tick every N ms──────────────────> clickTimer_Tick
-                                            ├─ Mouse.LeftClick()   → Windows clicks the mouse
+                                            ├─ Mouse.Click(...) / Mouse.DoubleClick(...) → Windows clicks the mouse
                                             └─ count++ / UpdateCount() → label shows the number
 ```
 
@@ -34,13 +34,15 @@ The Auto Clicker screen does three things:
 | `Program.cs` | Entry point. `Main()` runs first and opens the window: `Application.Run(new MaxClicks())`. |
 | `MaxClicks.cs` / `.Designer.cs` | **The main window** (the "frame"): header with the title and the switch button, and the area where the screens are shown. Handles the slide between screens. |
 | `MaxClicks.resx` | Extra data for the Designer (e.g. where the timer icon sits in the component tray). |
-| `ClickerView.cs` / `.Designer.cs` | **The Auto Clicker screen** (a UserControl): interval, hotkey, Start/Stop, counter, and all their logic. |
+| `ClickerView.cs` / `.Designer.cs` | **The Auto Clicker screen** (a UserControl): interval, click options (button, single/double), hotkey, Start/Stop, counter, and all their logic. |
 | `MacroView.cs` / `.Designer.cs` | **The Macro screen** (a UserControl). Only a "coming soon" placeholder for now. |
+| `Mouse.cs` | Sends real clicks through Windows (`user32.dll`): `Click(button)` and `DoubleClick(button)`, left or right. |
+| `GlobalHotkey.cs` | Asks Windows to reserve/release a system-wide hotkey (`user32.dll`). |
+| `Properties/Settings.settings` | The list of values saved between runs (hotkey, interval) and their defaults. Visual Studio generates `Settings.Designer.cs` from it. See [Saved settings](#saved-settings). |
+| `App.config` | App configuration. Also holds a copy of the settings' defaults (Visual Studio keeps it in sync). |
+| `Properties/` (rest) | Assembly info and resources created by Visual Studio. |
 
 In every `X.cs` / `X.Designer.cs` pair, the **Designer** file says what is on the screen (controls, positions, texts, which method each event calls) and the other file says what happens (the logic).
-| `Mouse.cs` | Sends a real left click through Windows (`user32.dll`). |
-| `GlobalHotkey.cs` | Asks Windows to reserve/release a system-wide hotkey (`user32.dll`). |
-| `Properties/` | Project settings and resources created by Visual Studio. |
 
 ---
 
@@ -53,7 +55,7 @@ In every `X.cs` / `X.Designer.cs` pair, the **Designer** file says what is on th
 - A **local variable** is declared inside a method. It disappears when the method ends.
 - A **method** is a block of code with a name (`StartClicking()`). `void` means it returns nothing.
 - `private` means only this class can use it. `public` means any class can.
-- `static` means it belongs to the class itself, not to an object. That is why we write `Mouse.LeftClick()` without `new Mouse()`.
+- `static` means it belongs to the class itself, not to an object. That is why we write `Mouse.Click(...)` without `new Mouse()`.
 
 ### `partial class`: one class, two files
 
@@ -103,6 +105,27 @@ clickTimer.Interval = (int)numInterval.Value;
 ```
 
 `(int)` is a **cast**: `numInterval.Value` is a `decimal`, `Interval` needs an `int`.
+
+### `condition ? a : b` (the ternary operator)
+
+A short `if/else` that gives back a value: "if the condition is true, `a`, otherwise `b`".
+
+```csharp
+uint down = button == MouseButtons.Right ? RIGHTDOWN : LEFTDOWN;
+// same as:
+uint down;
+if (button == MouseButtons.Right) down = RIGHTDOWN; else down = LEFTDOWN;
+```
+
+### `=>` properties (computed values)
+
+A **property** looks like a field from outside (`SelectedButton`, no parentheses) but runs code every time it is read. With `=>` the code is a single expression:
+
+```csharp
+private bool SelectedDoubleClick => cmbClickType.SelectedIndex == 1;
+```
+
+Nothing is stored: each read asks the combo box again, so the value is never out of date.
 
 ### Form vs UserControl
 
@@ -191,15 +214,19 @@ The movement is linear (same speed all the way). To make it faster or slower, ch
 
 **Where:** `ClickerView.cs`.
 
-**Controls:** `numInterval` (milliseconds), `btnStart`, `btnStop`, `lblCount`, `clickTimer`.
+**Controls:** `numInterval` (milliseconds), `cmbButton` / `cmbClickType` (click options), `btnStart`, `btnStop`, `lblCount`, `clickTimer`.
 
 The **Timer** is the engine. Once started, it raises `Tick` every `Interval` milliseconds, and **each Tick is one click**:
 
 ```csharp
 private void clickTimer_Tick(object sender, EventArgs e)
 {
-    Mouse.LeftClick();  // the real click
-    count++;            // +1
+    if (SelectedDoubleClick)
+        Mouse.DoubleClick(SelectedButton);   // the real click(s)
+    else
+        Mouse.Click(SelectedButton);
+
+    count++;            // +1 (a double click counts as 1)
     UpdateCount();      // show it
 }
 ```
@@ -216,7 +243,46 @@ The Start/Stop buttons and the hotkey all call these same methods, so the logic 
 
 **Why `System.Windows.Forms.Timer`:** it raises `Tick` on the same thread as the window, so the label can be changed directly. A `System.Timers.Timer` would run on another thread and changing controls from there causes errors.
 
-**Where the click goes:** `Mouse.LeftClick()` clicks wherever the cursor is right now.
+**Where the click goes:** wherever the cursor is right now.
+
+### Click options (button, single / double)
+
+The "Click" group has two **ComboBox** controls with `DropDownStyle = DropDownList` (pick from the list only, no typing):
+
+| Combo | Item 0 | Item 1 |
+|---|---|---|
+| `cmbButton` | Left button | Right button |
+| `cmbClickType` | Single click | Double click |
+
+The code works with the selected **position** (`SelectedIndex`), not the text, and turns it into real values with two `=>` properties:
+
+```csharp
+private MouseButtons SelectedButton => cmbButton.SelectedIndex == 1 ? MouseButtons.Right : MouseButtons.Left;
+private bool SelectedDoubleClick => cmbClickType.SelectedIndex == 1;
+```
+
+`MouseButtons` is an **enum** that already exists in WinForms (`Left`, `Right`, `Middle`...), so no new type was needed. It is also what gets saved in the settings.
+
+**In `Mouse.cs`:**
+- `Click(button)` sends "press" then "release" for that button (`mouse_event` flags: left `0x0002`/`0x0004`, right `0x0008`/`0x0010`).
+- `DoubleClick(button)` just calls `Click` twice. Windows turns two clicks into a double click when they happen in the same spot within the double-click time (500 ms by default), and these happen right after each other.
+
+**Counter:** a double click counts as **1** (one action per Tick), so the counter means "how many times the clicker acted".
+
+The combos are locked while running (`UpdateControls`), like the interval. In the Visual Studio Designer they look empty: the selection is set by `LoadSettings`, which doesn't run there.
+
+**Known limit: the interval is not exact.** The WinForms Timer only fires on Windows' clock "ticks", about every **15.6 ms**, and always rounds the interval **up** to the next tick. Measured on the dev PC (2026-10-16):
+
+| Interval asked | Real clicks/s | Ideal |
+|---|---|---|
+| 1, 5, 10, 15 ms | ~63 | 1000, 200, 100, 67 |
+| 16 ms | ~35 | 62.5 |
+| 50 ms | ~16 | 20 |
+| 100 ms | ~9 | 10 |
+
+So any value from 1 to 15 ms gave the same speed, and every other value is a bit slower than asked. Asking Windows for a finer clock (`timeBeginPeriod(1)`) did not change this.
+
+**Decision:** the field's minimum is **15 ms** (the fastest the Timer really goes), so the screen doesn't offer speeds the app can't do. Exact timing would need the clicks on a separate thread; it was left as a possible future improvement (see NOTES.md).
 
 ---
 
@@ -281,8 +347,9 @@ If registering fails and the old hotkey can't be registered either (e.g. F6 is a
 
 ```
 App opens
-  └─> ClickerView.OnLoad ─> Register(F6)   (if another program already uses it: warning, hotkey = none)
-                                           (skipped inside the Visual Studio Designer)
+  └─> ClickerView.OnLoad ─> LoadSettings ─> Register(saved hotkey, F6 the first time)
+                              (if another program already uses it: warning, hotkey = none)
+                              (all skipped inside the Visual Studio Designer)
 
 User clicks "Change"
   └─> btnSetHotkey_Click ─> StartHotkeyCapture ─> Unregister current, waitingForHotkey = true
@@ -290,7 +357,7 @@ User clicks "Change"
 
 User presses Ctrl+F7
   └─> ProcessCmdKey ─> FinishHotkeyCapture
-        ├─ Register(Ctrl+F7) ok   → becomes the hotkey
+        ├─ Register(Ctrl+F7) ok   → becomes the hotkey, SaveHotkey()
         └─ Register fails         → warning, Register(old one) again (fails too → none)
 
 User presses Ctrl+F7 anywhere in Windows
@@ -299,11 +366,53 @@ User presses Ctrl+F7 anywhere in Windows
 User switches to Macro while choosing a hotkey
   └─> OnVisibleChanged ─> FinishHotkeyCapture(old one)   (cancel: a hidden screen gets no keys)
 
+User clicks Start / presses the hotkey
+  └─> StartClicking ─> SaveClickSettings
+
 App closes
   └─> ClickerView.OnHandleDestroyed ─> Unregister    (frees the key for other programs)
+                                     └─> SaveClickSettings
 ```
 
-**Not saved yet:** the chosen hotkey goes back to F6 when the app restarts.
+---
+
+## Saved settings
+
+**Where:** `Properties/Settings.settings` (the list), `ClickerView.cs` region "Saved Settings" (load/save).
+
+The hotkey, the interval and the click options are remembered between runs using **application settings**, a feature of .NET Framework:
+
+1. `Settings.settings` lists each value with a **name**, a **type** and a **default**:
+
+   | Name | Type | Default |
+   |---|---|---|
+   | `Hotkey` | `System.Windows.Forms.Keys` | `F6` |
+   | `Interval` | `int` | `100` |
+   | `ClickButton` | `System.Windows.Forms.MouseButtons` | `Left` |
+   | `DoubleClick` | `bool` | `False` |
+
+2. Visual Studio turns that list into a class, `Properties.Settings`, with one property per value. `Settings.Default` is the single shared instance: `Settings.Default.Hotkey` reads the saved hotkey, `Settings.Default.Hotkey = X` changes it **in memory only**, and `Settings.Default.Save()` writes everything to disk.
+3. Scope **User** means each Windows user has their own copy, and the app is allowed to change it. (Scope *Application* would be read-only.)
+
+| Method | When | What |
+|---|---|---|
+| `LoadSettings()` | `OnLoad`, before registering the hotkey | Copies the saved hotkey into `hotkey`, the interval into `numInterval`, and selects the saved button / click type in the combos. |
+| `SaveHotkey()` | `FinishHotkeyCapture`, only if the new hotkey was registered | Saves `hotkey`. |
+| `SaveClickSettings()` | `StartClicking` and `OnHandleDestroyed` (the app is closing) | Saves the interval, the button and single/double. Not on every change (the fields can change many times): on Start, so they survive a crash, and on close, so a choice made without starting is kept too. |
+
+**Why the hotkey is saved only on a successful change:** if the saved hotkey is taken by another program when the app opens, the screen shows "(none)". Saving at that moment would replace the user's choice with "none" for good; not saving keeps it, and the next run tries it again.
+
+**Why `LoadSettings` clamps the interval:** `NumericUpDown.Value` throws an error if given a number outside `Minimum`..`Maximum` (15..60000), and the settings file is plain text anyone can edit. `Math.Max(min, Math.Min(max, value))` forces the value into the range.
+
+**Where the file lives:** `%LOCALAPPDATA%\AutoClicker\MaxClicks.exe_Url_<hash>\1.0.0.0\user.config`, a small XML file. (`AutoClicker` is the namespace, used because `AssemblyCompany` is empty; `MaxClicks.exe` is the exe name.) Things to know:
+
+- `<hash>` comes from the **exe's path**, so `bin\Debug` and `bin\Release` (or a copy elsewhere) each have their **own** saved settings.
+- `1.0.0.0` is the assembly version (`AssemblyInfo.cs`). If it changes, the app starts again from the defaults.
+- Before the exe was renamed to `MaxClicks.exe` it was `AutoClicker.exe`, so old folders named `AutoClicker.exe_Url_...` are no longer used and can be deleted.
+
+To reset to the defaults, close the app and delete that folder.
+
+The Designer never loads or saves settings (same `inDesigner || DesignMode` check as the hotkey), otherwise it would read and write Visual Studio's own settings.
 
 ---
 
@@ -318,7 +427,7 @@ bool running = clickTimer.Enabled;   // is the timer running?
 
 and sets every control to match:
 
-| State | Start | Stop | Interval | Change button | Hotkey label |
+| State | Start | Stop | Interval + click combos | Change button | Hotkey label |
 |---|---|---|---|---|---|
 | Stopped | on | off | on | on, "Change" | current hotkey |
 | Running | off | on | off | off | current hotkey |
@@ -345,12 +454,13 @@ Regions are grouped **by feature**, and inside each one the methods follow the o
 
 | Region | Contains (in order) |
 |---|---|
-| Fields | Clicking: `count`. Hotkey: `HotkeyId`, `hotkey`, `waitingForHotkey` |
+| Fields | Clicking: `count`. Hotkey: `HotkeyId`, `hotkey`, `waitingForHotkey`. Designer: `inDesigner` |
 | Constructor | `ClickerView()` |
 | Control Lifecycle | `OnLoad` (first shown), `OnVisibleChanged` (hidden/shown), `OnHandleDestroyed` (destroyed when the window closes) |
-| Clicking | `btnStart_Click`, `btnStop_Click` → `StartClicking`, `StopClicking`, `ToggleClicking` → `clickTimer_Tick` |
+| Clicking | `btnStart_Click`, `btnStop_Click` → `StartClicking`, `StopClicking`, `ToggleClicking` → `clickTimer_Tick` → `SelectedButton`, `SelectedDoubleClick` |
 | Hotkey: Choosing a New One | Steps 1–4: `btnSetHotkey_Click` → `StartHotkeyCapture` → `ProcessCmdKey` → `FinishHotkeyCapture` |
 | Hotkey: Registering and Receiving | `TryRegisterHotkey`, `WndProc`, `ShowHotkeyTakenWarning`, `HotkeyToText` |
+| Saved Settings | `LoadSettings`, `SaveHotkey`, `SaveClickSettings` |
 | UI Updates | `UpdateCount`, `UpdateControls` |
 
 Event handlers and overrides live in the region of the feature they belong to (e.g. `ProcessCmdKey` is in "Choosing a New One"), not in a separate "handlers" pile.
@@ -376,3 +486,7 @@ Event handlers and overrides live in the region of the feature they belong to (e
 | **Handle** | The number Windows uses to identify a window or control (`this.Handle`). |
 | **Message** | How Windows notifies a window that something happened (`WM_...`). |
 | **Modifier** | Ctrl, Shift, Alt (and Win) combined with a key. |
+| **Enum** | A type with a fixed list of named values (`MouseButtons.Left`, `Keys.F6`). |
+| **Property** | Looks like a field, but runs code when read/written (`SelectedButton`). |
+| **ComboBox** | A drop-down list; `SelectedIndex` is the position of the chosen item (0, 1, ...; -1 = none). |
+| **Settings** | Values saved on disk between runs (`Properties.Settings.Default`). |

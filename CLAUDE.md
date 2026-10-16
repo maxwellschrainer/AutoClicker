@@ -13,6 +13,9 @@ Guide for AI assistants (and humans) continuing this project. Read this first, t
 - Update `NOTES.md` (Done / In progress / To do / Decisions, and the date).
 - Update `docs/HOW-IT-WORKS.md` whenever a feature or concept is added or changed.
 - Update `README.md` if user-facing features change.
+- Update this file (layout, Gotchas, Testing) when something non-obvious is learned.
+- Keep NOTES.md "Next session" accurate: anyone opening the project must know where it stands and what comes next.
+- Suggest improvements/optimizations you noticed (code, structure, docs), even outside the current step. Add the ones not done now to the To do list.
 - Don't commit unless asked: the user usually commits and pushes themselves.
 
 ## The user
@@ -32,10 +35,11 @@ AutoClicker/                 ← git repo root (this folder)
    ├─ AutoClicker.csproj     ← old-style csproj (see below)
    ├─ Program.cs             ← Main → Application.Run(new MaxClicks())
    ├─ MaxClicks.*            ← main Form: header + switch button + slide between screens
-   ├─ ClickerView.*          ← UserControl: auto clicker screen (interval, hotkey, start/stop, counter)
+   ├─ ClickerView.*          ← UserControl: auto clicker screen (interval, click options, hotkey, start/stop, counter)
    ├─ MacroView.*            ← UserControl: macro screen (placeholder, not implemented)
-   ├─ Mouse.cs               ← P/Invoke mouse_event: LeftClick()
-   └─ GlobalHotkey.cs        ← P/Invoke RegisterHotKey/UnregisterHotKey + WM_HOTKEY
+   ├─ Mouse.cs               ← P/Invoke mouse_event: Click(button), DoubleClick(button)
+   ├─ GlobalHotkey.cs        ← P/Invoke RegisterHotKey/UnregisterHotKey + WM_HOTKEY
+   └─ Properties/Settings.*  ← saved settings (Hotkey, Interval, ClickButton, DoubleClick), mirrored in App.config
 ```
 
 ## Build
@@ -46,7 +50,7 @@ AutoClicker/                 ← git repo root (this folder)
 "/c/Program Files/Microsoft Visual Studio/2022/Community/MSBuild/Current/Bin/MSBuild.exe" AutoClicker.sln -nologo -v:minimal -p:OutDir="<scratchpad>/build/"
 ```
 
-Expect zero errors and zero warnings.
+Expect zero errors and zero warnings. The output is `MaxClicks.exe` (assembly name); the project, solution and namespace are still called `AutoClicker`.
 
 ## Gotchas (learned the hard way)
 
@@ -55,8 +59,10 @@ Expect zero errors and zero warnings.
 - **The VS Designer runs UserControl code** (constructor, `OnLoad`) inside `devenv.exe`. Anything that touches Windows (hotkeys, clicks, files) must be skipped there: `ClickerView` checks `inDesigner || DesignMode` (`inDesigner` is set in the constructor from `LicenseManager.UsageMode`). Forgetting this made Visual Studio hold F6.
 - **After changing a UserControl**, the user must rebuild in VS and close/reopen the `[Design]` tab for the Designer to load the new code.
 - **Global hotkeys** are registered on `ClickerView`'s own handle, id `1`. Only one process can hold a key: if a hotkey seems "taken", check who holds it (see Testing).
-- Use `System.Windows.Forms.Timer` (UI thread) for anything that updates controls.
+- Use `System.Windows.Forms.Timer` (UI thread) for anything that updates controls. It only fires every ~15.6 ms (rounded up), and `timeBeginPeriod(1)` did not help: see "Known limit" in `docs/HOW-IT-WORKS.md`.
+- **Starting the clicker in a test makes real clicks** wherever the cursor is. Don't automate Start unless the user agrees.
 - Avoid non-ASCII characters in C# string literals; use escapes (`"►"`).
+- **Saved settings** (`Properties.Settings`, see `docs/HOW-IT-WORKS.md`) live in `%LOCALAPPDATA%\AutoClicker\MaxClicks.exe_Url_<hash>\<version>\user.config`, and `<hash>` depends on the exe path: the scratchpad build, `bin\Debug` and `bin\Release` each have their own. When testing, always launch the exe by the same full path (a short `DEVMAS~1` path counts as a different one), and delete the test folder afterwards. `Settings.settings`, `Settings.Designer.cs` and `App.config` must stay in sync when adding a setting.
 
 ## Testing without the user
 
@@ -65,6 +71,7 @@ There are no unit tests. Smoke-test the built exe with PowerShell (examples were
 - Launch with `Start-Process`, wait ~2 s, check `HasExited` / `MainWindowTitle`, then `CloseMainWindow()` (Kill as fallback).
 - Screenshot a window: `GetWindowRect` + `Graphics.CopyFromScreen`, then view the PNG.
 - Click a button: find its child HWND by text (`EnumChildWindows` + `GetWindowText`) and `SendMessage(h, BM_CLICK=0x00F5)`. UI Automation did not find the WinForms buttons; Win32 did.
+- Change a DropDownList ComboBox: they have no findable window text; find them by class name (`GetClassName` contains `COMBOBOX`, in tab order) and `SendMessage(h, CB_SETCURSEL=0x014E, index, 0)`. `SelectedIndex` reads the native selection, so saving picks it up.
 - Send a key to the app: `PostMessage(buttonHwnd, WM_KEYDOWN=0x0100, vk, 0)` (goes through `ProcessCmdKey`).
 - Check whether a hotkey is free: `RegisterHotKey(IntPtr.Zero, id, MOD_NOREPEAT=0x4000, vk)`; if it returns true, unregister it immediately. F6 = `0x75`, F7 = `0x76`.
 

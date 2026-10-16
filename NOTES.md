@@ -13,7 +13,7 @@ Windows Forms app written in C# (.NET Framework 4.8): an **Auto Clicker + Macro,
 - Visual Studio project and solution (`AutoClicker.sln`), `.gitignore`, `.gitattributes`, MIT license.
 - `Mouse.cs`: `Mouse.LeftClick()` sends a left click at the current cursor position through `user32.dll` `mouse_event`.
 - Replaced the top `MenuStrip` (Program / Clicker / Macro / Help) with fixed controls:
-  - interval input (`NumericUpDown`, 1–60000 ms, default 100) inside a `GroupBox`
+  - interval input (`NumericUpDown`, 15–60000 ms, default 100) inside a `GroupBox`
   - Start / Stop buttons
   - click counter label
 - Clicking loop: Start sets `Timer.Interval` from the input and starts the timer; each `Tick` calls `Mouse.LeftClick()` and increments the counter; Stop stops the timer.
@@ -35,19 +35,32 @@ Windows Forms app written in C# (.NET Framework 4.8): an **Auto Clicker + Macro,
   - Launched the app and checked: opens fine, slides to Macro and back, closes cleanly.
 - **Bug fixed: F6 stuck as hotkey.** The Visual Studio Designer creates a real `ClickerView` to draw `MaxClicks`, so its `OnLoad` registered F6 **inside Visual Studio**: F6 kept starting clicks (from devenv) and the real app said F6 was taken. `ClickerView` now skips registration in the Designer (`LicenseManager.UsageMode` in the constructor + `DesignMode`). Verified: app open → F6 taken; change to F7 → F6 freed, F7 taken; app closed → both free.
 
+- **Hotkey and interval saved between runs** (`Properties.Settings`, scope User):
+  - `Settings.settings` has `Hotkey` (`Keys`, default F6) and `Interval` (`int`, default 100); `Settings.Designer.cs` and `App.config` updated to match (written by hand in the VS-generated format).
+  - `ClickerView`: `LoadSettings()` in `OnLoad` (interval clamped to the field's range), `SaveHotkey()` after a successful hotkey change, `SaveInterval()` in `OnHandleDestroyed`. Nothing is loaded/saved in the Designer.
+  - Tested with the built exe: changed F6 -> F7, closed, `user.config` had F7; edited the file to `Ctrl+F8` / 250 -> app opened showing both; 999999 -> clamped and saved as 60000. Not tested: typing a new interval in the UI and reopening (only loading/saving through the file was exercised).
+  - The interval is also saved on Start (survives a crash). Not tested automatically: Start makes real clicks.
+- **Exe renamed to `MaxClicks.exe`** (`AssemblyName`, plus `AssemblyTitle`/`AssemblyProduct` in `AssemblyInfo.cs`). Project, solution and namespace stay `AutoClicker`. Checked: window title and file description show "MaxClicks"; settings now go to `%LOCALAPPDATA%\AutoClicker\MaxClicks.exe_Url_...`.
+- **Measured the Timer's real precision** (see "Known limit" in `docs/HOW-IT-WORKS.md`): it steps every ~15.6 ms, so 1–15 ms all give ~63 clicks/s, and `timeBeginPeriod(1)` didn't help.
+- **Click options: left / right button, single / double click**:
+  - `Mouse.cs`: `LeftClick()` replaced by `Click(MouseButtons)` and `DoubleClick(MouseButtons)` (two clicks in a row).
+  - New "Click" group (`grpClick`) between Interval and Hotkey, with two DropDownList combos: `cmbButton` (Left/Right button), `cmbClickType` (Single/Double click). Window 61 px taller (`ClientSize` 284x313, views 284x273).
+  - `ClickerView`: `SelectedButton` / `SelectedDoubleClick` properties read the combos; `clickTimer_Tick` uses them; combos locked while running in `UpdateControls`.
+  - Settings `ClickButton` (`MouseButtons`, Left) and `DoubleClick` (`bool`, False); `SaveInterval` became `SaveClickSettings` (interval + button + double, on Start and on close).
+  - Tested with the built exe: defaults show Left/Single; changed both combos to item 1 -> closed -> `user.config` had Right/True -> reopened showing Right button / Double click (screenshot). Macro screen checked at the new height. **Not tested: real right/double clicks** (Start makes real clicks).
+- **Interval minimum raised from 1 to 15 ms** (`numInterval.Minimum` in `ClickerView.Designer.cs`), the fastest the Timer really goes. A saved value below 15 is clamped by `LoadSettings` (tested: saved 1 -> opened and saved 15).
+
 ## In progress
 
-- Nothing. Everything above is committed and pushed (last commit: "Starting the creation of the macro").
+- Click options (button + single/double): done, waiting for the user's review (not committed). Earlier steps of this session (saved settings, exe rename, 15 ms minimum) are also not committed yet.
 
 ## Next session
 
-The user wants to **finish the Auto Clicker first**, then start the Macro. Pick from the To do list below (Auto Clicker items first) and confirm with the user which one to do.
+The user wants to **finish the Auto Clicker first**, then start the Macro. Next candidate: the optional click limit (stop after N clicks), or `SendInput`. Confirm with the user.
 
 ## To do
 
 Auto Clicker (finish first):
-- [ ] Save the chosen hotkey (and interval) between runs (`Properties.Settings`).
-- [ ] Choose mouse button (left / right) and single / double click.
 - [ ] Optional click limit (stop after N clicks).
 - [ ] Consider replacing `mouse_event` with `SendInput` (the recommended API).
 
@@ -55,6 +68,7 @@ Macro (after the Auto Clicker):
 - [ ] **Macro screen**: design and implement in `MacroView` (record/play mouse and keyboard actions? to be defined with the user). It will need its own hotkey(s): follow the `ClickerView` pattern, use a different hotkey id, and skip registration in the Designer.
 
 General:
+- [ ] *(Future, only if more speed/precision is ever needed)* **Exact interval**: clicks on a background thread timed with a `Stopwatch` (or a high-resolution waitable timer) instead of the WinForms Timer; the screen reads the counter with a slow UI timer. Would allow < 15 ms and exact intervals. New concepts: threads, `Interlocked`, stopping a thread safely.
 - [ ] If the slide flickers too much on some PCs, try double buffering (`WS_EX_COMPOSITED`) on the form.
 
 ## Documentation
@@ -78,4 +92,10 @@ General:
 - **Screens are never destroyed when switching**, only moved and hidden, so a running clicker and its hotkey keep working on the Macro screen.
 - **The hotkey belongs to `ClickerView`** (registered on its own handle), not to the main window. The Macro will get its own when it exists.
 - **No side effects in the Designer**: UserControls check `inDesigner || DesignMode` before touching Windows (hotkeys, clicks...), because the Designer runs their code inside Visual Studio.
+- **Hotkey saved only on a successful change**: if the saved hotkey is taken at startup, the screen shows "(none)" but the file keeps the user's choice, so the next run tries it again. The interval is saved once, on close.
+- **15 ms minimum instead of a thread-based clicker** (user's choice): honest UI with a one-line change; ~63 clicks/s is enough for normal use, and a thread adds complexity and new concepts for little gain now.
+- **Exe named `MaxClicks.exe`, code still `AutoClicker`**: the user-visible name matches the app; renaming the project/namespace/repo would be churn with no gain.
+- **Settings are per exe path**: .NET stores `user.config` under a hash of the exe's path, so Debug, Release and copies elsewhere keep separate settings.
+- **Click options as DropDownList combos** (not radio buttons): compact, one row, and two radio groups would need extra panels. Code uses `SelectedIndex`, so the item texts can change freely.
+- **A double click counts as 1** in the counter: it counts actions (Ticks), which is also what a future "stop after N clicks" limit should use.
 - **Language**: code, comments, README, NOTES.md and commit messages in English.

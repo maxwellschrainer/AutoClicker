@@ -1,6 +1,7 @@
 using System;
 using System.ComponentModel;
 using System.Windows.Forms;
+using AutoClicker.Properties;
 
 namespace AutoClicker
 {
@@ -21,8 +22,8 @@ namespace AutoClicker
         private const int HotkeyId = 1;
 
         // Current hotkey: key + modifiers (e.g. Keys.Control | Keys.F6).
-        // Keys.None means no hotkey is registered
-        private Keys hotkey = Keys.F6;
+        // Keys.None means no hotkey is registered. The real value comes from the settings in OnLoad
+        private Keys hotkey = Keys.None;
 
         // True while we wait for the user to press the new hotkey
         private bool waitingForHotkey = false;
@@ -46,7 +47,7 @@ namespace AutoClicker
 
         #region Control Lifecycle
 
-        // Runs once when the screen is first shown: register the default hotkey
+        // Runs once when the screen is first shown: load the saved settings and register the hotkey
         protected override void OnLoad(EventArgs e)
         {
             base.OnLoad(e);
@@ -55,6 +56,8 @@ namespace AutoClicker
             // would hold the hotkey (and start clicking when it is pressed) while the Designer tab is open
             if (inDesigner || DesignMode)
                 return;
+
+            LoadSettings();
 
             if (!TryRegisterHotkey(hotkey))
             {
@@ -75,10 +78,14 @@ namespace AutoClicker
         }
 
         // Runs when the window closes and this control is destroyed:
-        // release the hotkey, so Windows frees it for other programs
+        // release the hotkey, so Windows frees it for other programs, and remember the click settings
         protected override void OnHandleDestroyed(EventArgs e)
         {
             GlobalHotkey.Unregister(Handle, HotkeyId);
+
+            if (!inDesigner && !DesignMode)
+                SaveClickSettings();
+
             base.OnHandleDestroyed(e);
         }
 
@@ -107,6 +114,9 @@ namespace AutoClicker
             clickTimer.Interval = (int)numInterval.Value;
             clickTimer.Start();
 
+            // Also saved here, not only on close: if the app is killed or crashes, the choices are not lost
+            SaveClickSettings();
+
             UpdateControls();
         }
 
@@ -125,13 +135,22 @@ namespace AutoClicker
                 StartClicking();
         }
 
-        // Each tick from the timer is one click
+        // Each tick from the timer is one click (or one double click, counted as 1)
         private void clickTimer_Tick(object sender, EventArgs e)
         {
-            Mouse.LeftClick();
+            if (SelectedDoubleClick)
+                Mouse.DoubleClick(SelectedButton);
+            else
+                Mouse.Click(SelectedButton);
+
             count++;
             UpdateCount();
         }
+
+        // The options chosen in the "Click" group, translated from the combo boxes' positions.
+        // Item 0 is "Left button" / "Single click", item 1 is "Right button" / "Double click"
+        private MouseButtons SelectedButton => cmbButton.SelectedIndex == 1 ? MouseButtons.Right : MouseButtons.Left;
+        private bool SelectedDoubleClick => cmbClickType.SelectedIndex == 1;
 
         #endregion
 
@@ -185,6 +204,7 @@ namespace AutoClicker
             if (TryRegisterHotkey(newHotkey))
             {
                 hotkey = newHotkey;
+                SaveHotkey();
             }
             else
             {
@@ -237,6 +257,40 @@ namespace AutoClicker
 
         #endregion
 
+        #region Saved Settings
+
+        // Reads what the last run saved (or the defaults from Settings.settings on the first run)
+        private void LoadSettings()
+        {
+            hotkey = Settings.Default.Hotkey;
+
+            // Assigning a value outside Minimum..Maximum would throw, and the saved file can be edited by hand
+            numInterval.Value = Math.Max(numInterval.Minimum, Math.Min(numInterval.Maximum, Settings.Default.Interval));
+
+            cmbButton.SelectedIndex = Settings.Default.ClickButton == MouseButtons.Right ? 1 : 0;
+            cmbClickType.SelectedIndex = Settings.Default.DoubleClick ? 1 : 0;
+        }
+
+        // Saved only when the user picks a new hotkey that works. If the saved one is taken at startup,
+        // the screen shows "(none)" but the file keeps the old choice, so the next run tries it again
+        private void SaveHotkey()
+        {
+            Settings.Default.Hotkey = hotkey;
+            Settings.Default.Save();
+        }
+
+        // Interval, button and single/double click. Called on Start and when the app closes
+        // (the fields can change many times, only the values in use matter)
+        private void SaveClickSettings()
+        {
+            Settings.Default.Interval = (int)numInterval.Value;
+            Settings.Default.ClickButton = SelectedButton;
+            Settings.Default.DoubleClick = SelectedDoubleClick;
+            Settings.Default.Save();
+        }
+
+        #endregion
+
         #region UI Updates
 
         private void UpdateCount()
@@ -250,10 +304,12 @@ namespace AutoClicker
         {
             bool running = clickTimer.Enabled;
 
-            // While running: only "Stop" is enabled, the interval and the hotkey are locked
+            // While running: only "Stop" is enabled, the interval, click options and hotkey are locked
             btnStart.Enabled = !running && !waitingForHotkey;
             btnStop.Enabled = running;
             numInterval.Enabled = !running;
+            cmbButton.Enabled = !running;
+            cmbClickType.Enabled = !running;
             btnSetHotkey.Enabled = !running;
 
             btnSetHotkey.Text = waitingForHotkey ? "Cancel" : "Change";

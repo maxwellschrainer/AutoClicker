@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Runtime.InteropServices;
+using System.Windows.Forms;
 
 namespace AutoClicker
 {
@@ -10,11 +11,26 @@ namespace AutoClicker
 
         private const uint LEFTDOWN = 0x0002;
         private const uint LEFTUP = 0x0004;
+        private const uint RIGHTDOWN = 0x0008;
+        private const uint RIGHTUP = 0x0010;
 
-        public static void LeftClick()
+        // One click (press + release) at the current cursor position.
+        // Only Left and Right are supported; any other button clicks Left
+        public static void Click(MouseButtons button)
         {
-            mouse_event(LEFTDOWN, 0, 0, 0, UIntPtr.Zero);
-            mouse_event(LEFTUP, 0, 0, 0, UIntPtr.Zero);
+            uint down = button == MouseButtons.Right ? RIGHTDOWN : LEFTDOWN;
+            uint up = button == MouseButtons.Right ? RIGHTUP : LEFTUP;
+
+            mouse_event(down, 0, 0, 0, UIntPtr.Zero);
+            mouse_event(up, 0, 0, 0, UIntPtr.Zero);
+        }
+
+        // Two clicks right after each other: Windows sees a double click when both
+        // happen in the same spot within the double-click time (500 ms by default)
+        public static void DoubleClick(MouseButtons button)
+        {
+            Click(button);
+            Click(button);
         }
     }
 }

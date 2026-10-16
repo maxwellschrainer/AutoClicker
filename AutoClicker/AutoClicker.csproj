@@ -7,7 +7,7 @@
     <ProjectGuid>{DE3B9F3E-5C55-4854-9131-2EA5A913B78E}</ProjectGuid>
     <OutputType>WinExe</OutputType>
     <RootNamespace>AutoClicker</RootNamespace>
-    <AssemblyName>AutoClicker</AssemblyName>
+    <AssemblyName>MaxClicks</AssemblyName>
     <TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>

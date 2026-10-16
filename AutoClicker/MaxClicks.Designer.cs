@@ -76,21 +76,21 @@ namespace AutoClicker
             this.pnlViews.Controls.Add(this.macroView);
             this.pnlViews.Location = new System.Drawing.Point(0, 40);
             this.pnlViews.Name = "pnlViews";
-            this.pnlViews.Size = new System.Drawing.Size(284, 212);
+            this.pnlViews.Size = new System.Drawing.Size(284, 273);
             this.pnlViews.TabIndex = 1;
             //
             // clickerView
             //
             this.clickerView.Location = new System.Drawing.Point(0, 0);
             this.clickerView.Name = "clickerView";
-            this.clickerView.Size = new System.Drawing.Size(284, 212);
+            this.clickerView.Size = new System.Drawing.Size(284, 273);
             this.clickerView.TabIndex = 0;
             //
             // macroView
             //
             this.macroView.Location = new System.Drawing.Point(284, 0);
             this.macroView.Name = "macroView";
-            this.macroView.Size = new System.Drawing.Size(284, 212);
+            this.macroView.Size = new System.Drawing.Size(284, 273);
             this.macroView.TabIndex = 1;
             this.macroView.Visible = false;
             //
@@ -103,7 +103,7 @@ namespace AutoClicker
             //
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(284, 252);
+            this.ClientSize = new System.Drawing.Size(284, 313);
             this.Controls.Add(this.pnlViews);
             this.Controls.Add(this.pnlHeader);
             this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedSingle;
