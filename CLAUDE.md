@@ -4,19 +4,28 @@ Guide for AI assistants (and humans) continuing this project. Read this first, t
 
 ## Start of every session
 
-1. Read `NOTES.md` (what is done, in progress, to do, decisions).
-2. Read the parts of `docs/HOW-IT-WORKS.md` related to the task (how each feature works).
+1. Read `NOTES.md` (current state, next step, to do, not tested yet).
+2. Read the parts of `docs/` related to the task: `HOW-IT-WORKS.md` (how each feature works), `DECISIONS.md` (why), `TESTING.md` (before testing).
 3. Check `git status` / `git log -5`: the user often edits code and commits by hand between sessions. Treat the files on disk as the truth.
 
 ## End of every step
 
-- Update `NOTES.md` (Done / In progress / To do / Decisions, and the date).
-- Update `docs/HOW-IT-WORKS.md` whenever a feature or concept is added or changed.
-- Update `README.md` if user-facing features change.
-- Update this file (layout, Gotchas, Testing) when something non-obvious is learned.
+- Update the docs. Each fact lives in one place; elsewhere, link to it:
+
+  | What changed | Where it goes |
+  |---|---|
+  | State, next step, to do, untested items, date | `NOTES.md` (short: no history, `git log` has it) |
+  | How a feature works (flow, methods, settings) | `docs/HOW-IT-WORKS.md` |
+  | A new C# / WinForms concept the user met | `docs/CSHARP-BASICS.md` (+ glossary) |
+  | A choice and its reason | `docs/DECISIONS.md` |
+  | A new way to test, or a testing trap | `docs/TESTING.md` |
+  | User-facing features | `README.md` |
+  | Workflow, layout, gotchas | this file |
+
 - Keep NOTES.md "Next session" accurate: anyone opening the project must know where it stands and what comes next.
 - Suggest improvements/optimizations you noticed (code, structure, docs), even outside the current step. Add the ones not done now to the To do list.
 - Don't commit unless asked: the user usually commits and pushes themselves.
+- Commit messages: no `Co-Authored-By` or other AI attribution lines.
 
 ## The user
 
@@ -29,8 +38,15 @@ Guide for AI assistants (and humans) continuing this project. Read this first, t
 ```
 AutoClicker/                 ← git repo root (this folder)
 ├─ AutoClicker.sln
-├─ CLAUDE.md, NOTES.md, README.md, LICENSE.txt
-├─ docs/HOW-IT-WORKS.md      ← code manual (human-oriented)
+├─ README.md                 ← for visitors: what it is, how to use, how to build
+├─ CLAUDE.md                 ← this file: workflow, build, gotchas
+├─ NOTES.md                  ← current state, next step, to do
+├─ LICENSE.txt
+├─ docs/
+│  ├─ HOW-IT-WORKS.md        ← code manual: files, features, flows
+│  ├─ CSHARP-BASICS.md       ← C# concepts used + glossary (the user is learning)
+│  ├─ DECISIONS.md           ← why things are the way they are
+│  └─ TESTING.md             ← how to test without the user
 └─ AutoClicker/              ← the C# project
    ├─ AutoClicker.csproj     ← old-style csproj (see below)
    ├─ Program.cs             ← Main → Application.Run(new MaxClicks())
@@ -58,25 +74,15 @@ Expect zero errors and zero warnings. The output is `MaxClicks.exe` (assembly na
 - **Designer files** (`*.Designer.cs`) are edited by hand here, but keep them in the exact format the VS Designer generates, so the user can keep editing visually. Renaming a component also requires renaming its `*.TrayLocation` metadata in the `.resx`.
 - **The VS Designer runs UserControl code** (constructor, `OnLoad`) inside `devenv.exe`. Anything that touches Windows (hotkeys, clicks, files) must be skipped there: `ClickerView` checks `inDesigner || DesignMode` (`inDesigner` is set in the constructor from `LicenseManager.UsageMode`). Forgetting this made Visual Studio hold F6.
 - **After changing a UserControl**, the user must rebuild in VS and close/reopen the `[Design]` tab for the Designer to load the new code.
-- **Global hotkeys** are registered on `ClickerView`'s own handle, id `1`. Only one process can hold a key: if a hotkey seems "taken", check who holds it (see Testing).
+- **Global hotkeys** are registered on `ClickerView`'s own handle, id `1`. Only one process can hold a key: if a hotkey seems "taken", check who holds it (see `docs/TESTING.md`).
 - Use `System.Windows.Forms.Timer` (UI thread) for anything that updates controls. It only fires every ~15.6 ms (rounded up), and `timeBeginPeriod(1)` did not help: see "Known limit" in `docs/HOW-IT-WORKS.md`.
-- **Starting the clicker in a test makes real clicks** wherever the cursor is. Only automate Start with a test window under the cursor (see Testing).
+- **Starting the clicker in a test makes real clicks** wherever the cursor is. Only automate Start with a test window under the cursor (see `docs/TESTING.md`).
 - Avoid non-ASCII characters in C# string literals; use escapes (`"►"`).
-- **Saved settings** (`Properties.Settings`, see `docs/HOW-IT-WORKS.md`) live in `%LOCALAPPDATA%\AutoClicker\MaxClicks.exe_Url_<hash>\<version>\user.config`, and `<hash>` depends on the exe path: the scratchpad build, `bin\Debug` and `bin\Release` each have their own. When testing, always launch the exe by the same full path (a short `DEVMAS~1` path counts as a different one), and delete the test folder afterwards. `Settings.settings`, `Settings.Designer.cs` and `App.config` must stay in sync when adding a setting.
+- **Saved settings** (`Properties.Settings`, see `docs/HOW-IT-WORKS.md`) are stored per exe path: the scratchpad build, `bin\Debug` and `bin\Release` each have their own (testing rules in `docs/TESTING.md`). `Settings.settings`, `Settings.Designer.cs` and `App.config` must stay in sync when adding a setting.
 
 ## Testing without the user
 
-There are no unit tests. Smoke-test the built exe with PowerShell (examples were used successfully):
-
-- Launch with `Start-Process`, wait ~2 s, check `HasExited` / `MainWindowTitle`, then `CloseMainWindow()` (Kill as fallback).
-- Screenshot a window: `GetWindowRect` + `Graphics.CopyFromScreen`, then view the PNG.
-- Click a button or toggle a CheckBox: find its child HWND by text (`EnumChildWindows` + `GetWindowText`) and `SendMessage(h, BM_CLICK=0x00F5)`. UI Automation did not find the WinForms buttons; Win32 did.
-- Change a DropDownList ComboBox: they have no findable window text; find them by class name (`GetClassName` contains `COMBOBOX`, in tab order) and `SendMessage(h, CB_SETCURSEL=0x014E, index, 0)`. `SelectedIndex` reads the native selection, so saving picks it up.
-- Send a key to the app: `PostMessage(buttonHwnd, WM_KEYDOWN=0x0100, vk, 0)` (goes through `ProcessCmdKey`).
-- Test real clicks safely: open a small TopMost logging Form right under the cursor (PowerShell + WinForms, counting `MouseDown` / `MouseDoubleClick`), move MaxClicks away from the cursor with `SetWindowPos`, press Start with `BM_CLICK`, and read the counter label with `GetWindowText`. The clicks only land on the test window. To call `Mouse` directly, load the built exe with `[Reflection.Assembly]::LoadFrom` (it is public).
-- Check whether a hotkey is free: `RegisterHotKey(IntPtr.Zero, id, MOD_NOREPEAT=0x4000, vk)`; if it returns true, unregister it immediately. F6 = `0x75`, F7 = `0x76`.
-
-Always tell the user what was tested and what was not.
+There are no unit tests. Follow `docs/TESTING.md` (PowerShell recipes, safe real-click test, hotkey checks). Always tell the user what was tested and what was not.
 
 ## Code conventions
 

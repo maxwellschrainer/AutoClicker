@@ -1,7 +1,12 @@
 # How MaxClicks works
 
-A manual for the code: what each file does, how the pieces talk to each other, and the C# / Windows concepts behind them.
+A manual for the code: what each file does, how the pieces talk to each other, and how each feature works.
 If you get lost, start with [The big picture](#the-big-picture), then jump to the part you need.
+
+Related docs:
+- [C# basics](CSHARP-BASICS.md): the C# concepts used here (classes, `partial`, `override`, events, P/Invoke...) and a glossary.
+- [Decisions](DECISIONS.md): why things were done this way.
+- [Testing](TESTING.md): how the app is tested.
 
 ---
 
@@ -48,97 +53,9 @@ In every `X.cs` / `X.Designer.cs` pair, the **Designer** file says what is on th
 
 ---
 
-## Core concepts
+## The Designer runs your code
 
-### Class, field, method
-
-- A **class** is a blueprint (`MaxClicks`, `ClickerView`, `Mouse`, `GlobalHotkey`).
-- A **field** is a variable declared directly inside the class, outside any method (e.g. `private int count`). It lives as long as the object and every method of the class can see it.
-- A **local variable** is declared inside a method. It disappears when the method ends.
-- A **method** is a block of code with a name (`StartClicking()`). `void` means it returns nothing.
-- `private` means only this class can use it. `public` means any class can.
-- `static` means it belongs to the class itself, not to an object. That is why we write `Mouse.Click(...)` without `new Mouse()`.
-
-### `partial class`: one class, two files
-
-`ClickerView.Designer.cs` and `ClickerView.cs` both start with `partial class ClickerView`. They are **the same class split in two files**: the Designer file holds the screen, the other holds the logic. That is why `btnStart` (declared in the Designer) can be used in `ClickerView.cs`. `MaxClicks` and `MacroView` work the same way.
-
-`InitializeComponent()` lives in the Designer file. The constructor calls it to build the screen:
-
-```csharp
-public MaxClicks()          // constructor: runs when "new MaxClicks()" happens
-{
-    InitializeComponent();  // builds all the controls
-}
-```
-
-### Inheritance, `override` and `base`
-
-`public partial class MaxClicks : Form` means **MaxClicks inherits from Form**. It gets everything a window already knows how to do for free: title bar, moving, closing, drawing, receiving keys...
-
-`Form` has some methods marked `virtual`, which means "a child class may replace me". `override` is how we replace one:
-
-```csharp
-protected override void OnLoad(EventArgs e)
-{
-    base.OnLoad(e);   // 1. run the ORIGINAL Form.OnLoad
-    // 2. then our extra code
-}
-```
-
-`base.X()` calls the original version from `Form`. Without it we would **replace** the behavior instead of **adding** to it. For example, the original `OnLoad` is what raises the `Load` event; skipping `base.OnLoad(e)` would silently break anything that listens to `Load`.
-
-### Events and event handlers
-
-An **event** is something that happens (a click, a timer tick). An **event handler** is the method that runs when it happens. The connection is made in the Designer with `+=`:
-
-```csharp
-this.btnStart.Click += new System.EventHandler(this.btnStart_Click);
-//   "when btnStart is clicked, call btnStart_Click"
-```
-
-Naming convention: `controlName_EventName` (`btnStart_Click`, `clickTimer_Tick`).
-
-### Assignment reads right to left
-
-```csharp
-clickTimer.Interval = (int)numInterval.Value;
-// the value typed in the field  ──>  goes into the timer
-```
-
-`(int)` is a **cast**: `numInterval.Value` is a `decimal`, `Interval` needs an `int`.
-
-### `condition ? a : b` (the ternary operator)
-
-A short `if/else` that gives back a value: "if the condition is true, `a`, otherwise `b`".
-
-```csharp
-uint down = button == MouseButtons.Right ? RIGHTDOWN : LEFTDOWN;
-// same as:
-uint down;
-if (button == MouseButtons.Right) down = RIGHTDOWN; else down = LEFTDOWN;
-```
-
-### `=>` properties (computed values)
-
-A **property** looks like a field from outside (`SelectedButton`, no parentheses) but runs code every time it is read. With `=>` the code is a single expression:
-
-```csharp
-private bool SelectedDoubleClick => cmbClickType.SelectedIndex == 1;
-```
-
-Nothing is stored: each read asks the combo box again, so the value is never out of date.
-
-### Form vs UserControl
-
-- A **Form** is a whole window: title bar, borders, close button. `MaxClicks` is a Form.
-- A **UserControl** is a **piece of screen** you design like a form (it has its own Designer and code), but it lives **inside** a window, like a big custom control. `ClickerView` and `MacroView` are UserControls placed inside `MaxClicks`.
-
-After building the project, both appear in the Visual Studio Toolbox and can be opened in the Designer on their own.
-
-### The Designer runs your code
-
-To draw `MaxClicks` in the Designer, Visual Studio creates **real** `ClickerView` and `MacroView` objects, so their constructor and `OnLoad` actually run **inside Visual Studio**. Anything with side effects outside the screen (registering a hotkey, clicking the mouse, opening files) must be skipped there:
+Visual Studio's **Designer** is the visual editor for screens (see [Form vs UserControl](CSHARP-BASICS.md#form-vs-usercontrol)). To draw `MaxClicks` in the Designer, Visual Studio creates **real** `ClickerView` and `MacroView` objects, so their constructor and `OnLoad` actually run **inside Visual Studio**. Anything with side effects outside the screen (registering a hotkey, clicking the mouse, opening files) must be skipped there:
 
 ```csharp
 // constructor: the only place where this check is reliable
@@ -150,17 +67,6 @@ if (inDesigner || DesignMode)
 ```
 
 Without this, while the `MaxClicks.cs [Design]` tab was open, **Visual Studio itself** held F6: pressing F6 started clicking from inside Visual Studio, and the real app could not use F6 ("already used by another program").
-
-### Calling Windows directly (`DllImport`)
-
-Some things .NET does not offer, so we call Windows functions from `user32.dll`:
-
-```csharp
-[DllImport("user32.dll")]
-private static extern void mouse_event(...);
-```
-
-`extern` means "the code of this method is not here, it is inside the DLL". This is called **P/Invoke**. `Mouse.cs` and `GlobalHotkey.cs` both use it.
 
 ---
 
@@ -313,7 +219,9 @@ Two event handlers keep the screen in step:
 
 Both controls are locked while running.
 
-**Known limit: the interval is not exact.** The WinForms Timer only fires on Windows' clock "ticks", about every **15.6 ms**, and always rounds the interval **up** to the next tick. Measured on the dev PC (2026-10-16):
+### Known limit: the interval is not exact
+
+The WinForms Timer only fires on Windows' clock "ticks", about every **15.6 ms**, and always rounds the interval **up** to the next tick. Measured on the dev PC (2026-10-16):
 
 | Interval asked | Real clicks/s | Ideal |
 |---|---|---|
@@ -324,7 +232,7 @@ Both controls are locked while running.
 
 So any value from 1 to 15 ms gave the same speed, and every other value is a bit slower than asked. Asking Windows for a finer clock (`timeBeginPeriod(1)`) did not change this.
 
-**Decision:** the field's minimum is **15 ms** (the fastest the Timer really goes), so the screen doesn't offer speeds the app can't do. Exact timing would need the clicks on a separate thread; it was left as a possible future improvement (see NOTES.md).
+**Decision:** the field's minimum is **15 ms** (the fastest the Timer really goes), so the screen doesn't offer speeds the app can't do. Exact timing would need the clicks on a separate thread; it was left as a possible future improvement (see [Decisions](DECISIONS.md) and the To do list in [NOTES.md](../NOTES.md)).
 
 ---
 
@@ -510,29 +418,3 @@ Regions are grouped **by feature**, and inside each one the methods follow the o
 Event handlers and overrides live in the region of the feature they belong to (e.g. `ProcessCmdKey` is in "Choosing a New One"), not in a separate "handlers" pile.
 
 `#region` changes nothing in the program; it only lets the editor fold blocks.
-
----
-
-## Glossary
-
-| Term | Meaning |
-|---|---|
-| **Control** | Anything on the window: Button, Label, NumericUpDown, CheckBox, ComboBox, GroupBox, Panel. |
-| **Form** | A whole window. |
-| **UserControl** | A reusable piece of screen with its own Designer and code, placed inside a Form. |
-| **Panel** | An invisible container that groups controls (`pnlHeader`, `pnlViews`). |
-| **Component** | Like a control but invisible (the Timer). Shown in the tray under the form in the Designer. |
-| **Event / handler** | Something that happens / the method that reacts to it. |
-| **Override** | Replacing a method inherited from the parent class. |
-| **`base`** | The parent class (`Form`, `UserControl`); `base.X()` runs the original version. |
-| **Cast** | Converting a value to another type: `(int)value`. |
-| **P/Invoke** | Calling a Windows DLL function from C# (`DllImport` + `extern`). |
-| **Handle** | The number Windows uses to identify a window or control (`this.Handle`). |
-| **Message** | How Windows notifies a window that something happened (`WM_...`). |
-| **Modifier** | Ctrl, Shift, Alt (and Win) combined with a key. |
-| **Enum** | A type with a fixed list of named values (`MouseButtons.Left`, `Keys.F6`). |
-| **Property** | Looks like a field, but runs code when read/written (`SelectedButton`). |
-| **NumericUpDown** | A number field with up/down arrows; `Value` is a `decimal` between `Minimum` and `Maximum`. |
-| **CheckBox** | A box that can be ticked; `Checked` is `true` or `false`, `CheckedChanged` fires when it changes. |
-| **ComboBox** | A drop-down list; `SelectedIndex` is the position of the chosen item (0, 1, ...; -1 = none). |
-| **Settings** | Values saved on disk between runs (`Properties.Settings.Default`). |
