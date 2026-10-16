@@ -4,6 +4,7 @@ using System.Windows.Forms;
 
 namespace AutoClicker
 {
+    // Sends real mouse clicks through Windows (user32.dll), at wherever the cursor is right now
     public static class Mouse
     {
         [DllImport("user32.dll")]

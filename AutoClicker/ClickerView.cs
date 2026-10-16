@@ -166,6 +166,13 @@ namespace AutoClicker
             UpdateCount();
         }
 
+        // Runs when the limit number changes (typed, arrows, or loaded from the settings):
+        // keeps the "/ limit" part of the counter in step with the field
+        private void numLimit_ValueChanged(object sender, EventArgs e)
+        {
+            UpdateCount();
+        }
+
         #endregion
 
         #region Hotkey: Choosing a New One

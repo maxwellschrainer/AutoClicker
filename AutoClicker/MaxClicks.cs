@@ -103,7 +103,7 @@ namespace AutoClicker
             bool onClicker = currentView == clickerView;
 
             lblTitle.Text = onClicker ? "Auto Clicker" : "Macro";
-            btnSwitchView.Text = onClicker ? "Macro  ►" : "◄  Clicker"; // ► and ◄ arrows
+            btnSwitchView.Text = onClicker ? "Macro  \u25BA" : "\u25C4  Clicker"; // \u25BA = right arrow, \u25C4 = left arrow
         }
 
         #endregion

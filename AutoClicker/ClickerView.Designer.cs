@@ -242,6 +242,7 @@
             0,
             0,
             0});
+            this.numLimit.ValueChanged += new System.EventHandler(this.numLimit_ValueChanged);
             // 
             // chkLimit
             // 

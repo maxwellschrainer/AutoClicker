@@ -59,7 +59,7 @@ Windows Forms app written in C# (.NET Framework 4.8): an **Auto Clicker + Macro,
 
 ## In progress
 
-- Nothing. Click limit committed; its automatic stop still needs a manual test by the user (real clicks).
+- Review fixes (not committed): counter "/ limit" now follows the number field (`numLimit_ValueChanged`; bug: a saved limit of 500 showed "/ 100" at startup, and typing a new limit didn't update the label); `\u25BA`/`\u25C4` escapes in `MaxClicks.cs`; unused usings removed from `Program.cs`; class comment in `Mouse.cs`; docs brought up to date. The click limit's automatic stop still needs a manual test by the user (real clicks).
 
 ## Next session
 
@@ -98,7 +98,7 @@ General:
 - **Screens are never destroyed when switching**, only moved and hidden, so a running clicker and its hotkey keep working on the Macro screen.
 - **The hotkey belongs to `ClickerView`** (registered on its own handle), not to the main window. The Macro will get its own when it exists.
 - **No side effects in the Designer**: UserControls check `inDesigner || DesignMode` before touching Windows (hotkeys, clicks...), because the Designer runs their code inside Visual Studio.
-- **Hotkey saved only on a successful change**: if the saved hotkey is taken at startup, the screen shows "(none)" but the file keeps the user's choice, so the next run tries it again. The interval is saved once, on close.
+- **Hotkey saved only on a successful change**: if the saved hotkey is taken at startup, the screen shows "(none)" but the file keeps the user's choice, so the next run tries it again. The click settings (interval, button, single/double, limit) are saved on Start and on close.
 - **15 ms minimum instead of a thread-based clicker** (user's choice): honest UI with a one-line change; ~63 clicks/s is enough for normal use, and a thread adds complexity and new concepts for little gain now.
 - **Exe named `MaxClicks.exe`, code still `AutoClicker`**: the user-visible name matches the app; renaming the project/namespace/repo would be churn with no gain.
 - **Settings are per exe path**: .NET stores `user.config` under a hash of the exe's path, so Debug, Release and copies elsewhere keep separate settings.

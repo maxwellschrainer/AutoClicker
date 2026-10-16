@@ -9,11 +9,12 @@ If you get lost, start with [The big picture](#the-big-picture), then jump to th
 
 MaxClicks is a Windows Forms app with **one window and two screens**: the **Auto Clicker** and the **Macro** (empty for now). A button in the header slides from one screen to the other. See [Screens and switching](#screens-and-switching).
 
-The Auto Clicker screen does three things:
+The Auto Clicker screen does four things:
 
-1. **Clicks the mouse** at a fixed interval while it is running.
+1. **Clicks the mouse** at a fixed interval while it is running (left or right button, single or double click).
 2. **Counts** the clicks and shows the number on the screen.
-3. **Listens for a global hotkey** (default F6) that starts/stops the clicking from any program.
+3. **Stops by itself** after N clicks, if the click limit is on.
+4. **Listens for a global hotkey** (default F6) that starts/stops the clicking from any program.
 
 ```
  You ──clicks Start / presses hotkey──> ClickerView (the Auto Clicker screen)
@@ -22,7 +23,8 @@ The Auto Clicker screen does three things:
                                             │
  Timer ──Tick every N ms──────────────────> clickTimer_Tick
                                             ├─ Mouse.Click(...) / Mouse.DoubleClick(...) → Windows clicks the mouse
-                                            └─ count++ / UpdateCount() → label shows the number
+                                            ├─ count++ / UpdateCount() → label shows the number
+                                            └─ LimitReached? → StopClicking()
 ```
 
 ---
@@ -38,7 +40,7 @@ The Auto Clicker screen does three things:
 | `MacroView.cs` / `.Designer.cs` | **The Macro screen** (a UserControl). Only a "coming soon" placeholder for now. |
 | `Mouse.cs` | Sends real clicks through Windows (`user32.dll`): `Click(button)` and `DoubleClick(button)`, left or right. |
 | `GlobalHotkey.cs` | Asks Windows to reserve/release a system-wide hotkey (`user32.dll`). |
-| `Properties/Settings.settings` | The list of values saved between runs (hotkey, interval) and their defaults. Visual Studio generates `Settings.Designer.cs` from it. See [Saved settings](#saved-settings). |
+| `Properties/Settings.settings` | The list of values saved between runs (hotkey, interval, click options, click limit) and their defaults. Visual Studio generates `Settings.Designer.cs` from it. See [Saved settings](#saved-settings). |
 | `App.config` | App configuration. Also holds a copy of the settings' defaults (Visual Studio keeps it in sync). |
 | `Properties/` (rest) | Assembly info and resources created by Visual Studio. |
 
@@ -291,7 +293,12 @@ When it is `true`, it calls `StopClicking()`, the same method the Stop button us
 - `>=` instead of `==`: safe even if `count` somehow got past the limit.
 - It counts **actions** (Ticks), so with "Double click" a limit of 10 means 10 double clicks.
 
-`chkLimit_CheckedChanged` runs when the box is ticked or unticked and calls `UpdateControls()` (the number field is enabled only while the box is checked) and `UpdateCount()` (to add or remove the "/ limit" part of the label). Both controls are locked while running.
+Two event handlers keep the screen in step:
+
+- `chkLimit_CheckedChanged` runs when the box is ticked or unticked and calls `UpdateControls()` (the number field is enabled only while the box is checked) and `UpdateCount()` (to add or remove the "/ limit" part of the label).
+- `numLimit_ValueChanged` runs when the number changes and calls `UpdateCount()`, so the label always shows the number in the field. It also fires when `LoadSettings` puts the saved number in the field. (Without it, a saved limit of 500 showed "Clicks: 0 / 100" at startup.)
+
+Both controls are locked while running.
 
 **Known limit: the interval is not exact.** The WinForms Timer only fires on Windows' clock "ticks", about every **15.6 ms**, and always rounds the interval **up** to the next tick. Measured on the dev PC (2026-10-16):
 
@@ -481,7 +488,7 @@ Regions are grouped **by feature**, and inside each one the methods follow the o
 | Fields | Clicking: `count`. Hotkey: `HotkeyId`, `hotkey`, `waitingForHotkey`. Designer: `inDesigner` |
 | Constructor | `ClickerView()` |
 | Control Lifecycle | `OnLoad` (first shown), `OnVisibleChanged` (hidden/shown), `OnHandleDestroyed` (destroyed when the window closes) |
-| Clicking | `btnStart_Click`, `btnStop_Click` → `StartClicking`, `StopClicking`, `ToggleClicking` → `clickTimer_Tick` → `LimitReached`, `SelectedButton`, `SelectedDoubleClick`, `chkLimit_CheckedChanged` |
+| Clicking | `btnStart_Click`, `btnStop_Click` → `StartClicking`, `StopClicking`, `ToggleClicking` → `clickTimer_Tick` → `LimitReached`, `SelectedButton`, `SelectedDoubleClick`, `chkLimit_CheckedChanged`, `numLimit_ValueChanged` |
 | Hotkey: Choosing a New One | Steps 1–4: `btnSetHotkey_Click` → `StartHotkeyCapture` → `ProcessCmdKey` → `FinishHotkeyCapture` |
 | Hotkey: Registering and Receiving | `TryRegisterHotkey`, `WndProc`, `ShowHotkeyTakenWarning`, `HotkeyToText` |
 | Saved Settings | `LoadSettings`, `SaveHotkey`, `SaveClickSettings` |
@@ -497,7 +504,7 @@ Event handlers and overrides live in the region of the feature they belong to (e
 
 | Term | Meaning |
 |---|---|
-| **Control** | Anything on the window: Button, Label, NumericUpDown, GroupBox, Panel. |
+| **Control** | Anything on the window: Button, Label, NumericUpDown, CheckBox, ComboBox, GroupBox, Panel. |
 | **Form** | A whole window. |
 | **UserControl** | A reusable piece of screen with its own Designer and code, placed inside a Form. |
 | **Panel** | An invisible container that groups controls (`pnlHeader`, `pnlViews`). |
@@ -512,5 +519,7 @@ Event handlers and overrides live in the region of the feature they belong to (e
 | **Modifier** | Ctrl, Shift, Alt (and Win) combined with a key. |
 | **Enum** | A type with a fixed list of named values (`MouseButtons.Left`, `Keys.F6`). |
 | **Property** | Looks like a field, but runs code when read/written (`SelectedButton`). |
+| **NumericUpDown** | A number field with up/down arrows; `Value` is a `decimal` between `Minimum` and `Maximum`. |
+| **CheckBox** | A box that can be ticked; `Checked` is `true` or `false`, `CheckedChanged` fires when it changes. |
 | **ComboBox** | A drop-down list; `SelectedIndex` is the position of the chosen item (0, 1, ...; -1 = none). |
 | **Settings** | Values saved on disk between runs (`Properties.Settings.Default`). |
