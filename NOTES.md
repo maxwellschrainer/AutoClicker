@@ -47,7 +47,7 @@ Windows Forms app written in C# (.NET Framework 4.8): an **Auto Clicker + Macro,
   - New "Click" group (`grpClick`) between Interval and Hotkey, with two DropDownList combos: `cmbButton` (Left/Right button), `cmbClickType` (Single/Double click). Window 61 px taller (`ClientSize` 284x313, views 284x273).
   - `ClickerView`: `SelectedButton` / `SelectedDoubleClick` properties read the combos; `clickTimer_Tick` uses them; combos locked while running in `UpdateControls`.
   - Settings `ClickButton` (`MouseButtons`, Left) and `DoubleClick` (`bool`, False); `SaveInterval` became `SaveClickSettings` (interval + button + double, on Start and on close).
-  - Tested with the built exe: defaults show Left/Single; changed both combos to item 1 -> closed -> `user.config` had Right/True -> reopened showing Right button / Double click (screenshot). Macro screen checked at the new height. **Not tested: real right/double clicks** (Start makes real clicks).
+  - Tested with the built exe: defaults show Left/Single; changed both combos to item 1 -> closed -> `user.config` had Right/True -> reopened showing Right button / Double click (screenshot). Macro screen checked at the new height. Real clicks tested later with a logging test window (see CLAUDE.md, Testing): left and right, single and double all reach the window, and double clicks are recognized by Windows.
 - **Interval minimum raised from 1 to 15 ms** (`numInterval.Minimum` in `ClickerView.Designer.cs`), the fastest the Timer really goes. A saved value below 15 is clamped by `LoadSettings` (tested: saved 1 -> opened and saved 15).
 
 - **Click limit (stop after N clicks)**:
@@ -55,14 +55,14 @@ Windows Forms app written in C# (.NET Framework 4.8): an **Auto Clicker + Macro,
   - `clickTimer_Tick` calls `StopClicking()` when `LimitReached` (`chkLimit.Checked && count >= numLimit.Value`). Counts real clicks (see the next item).
   - Counter shows `Clicks: N / limit` while the box is checked. `numLimit` enabled only when the box is checked; both locked while running. `chkLimit_CheckedChanged` refreshes the controls and the counter.
   - Settings `LimitEnabled` (`bool`, False) and `ClickLimit` (`int`, 100), saved in `SaveClickSettings`, clamped in `LoadSettings`.
-  - Tested with the built exe: opens with the box unchecked and the number disabled (screenshot); ticked the box (BM_CLICK) -> closed -> `user.config` had `LimitEnabled` True -> reopened with the box checked, number enabled and "Clicks: 0 / 100" (screenshot). **Not tested: the automatic stop itself** (Start makes real clicks).
+  - Tested with the built exe: opens with the box unchecked and the number disabled (screenshot); ticked the box (BM_CLICK) -> closed -> `user.config` had `LimitEnabled` True -> reopened with the box checked, number enabled and "Clicks: 0 / 100" (screenshot). The automatic stop was tested later with the real app (see the next item).
 
 - **Counter counts real clicks: a double click adds 2** (user's request: with 1 per Tick, single and double looked the same speed on the screen). The limit counts real clicks too; with an odd limit in double mode the last Tick is a single click (`OnlyOneClickLeft`), so it stops exactly at the limit.
   - Tested with the real app clicking a logging test window under the cursor (interval 100): double + limit 5 -> label "5 / 5", 5 clicks received; double + limit 6 -> "6 / 6", 6 clicks, 3 double clicks recognized; single + limit 4 -> "4 / 4", 4 clicks. This also confirms the automatic stop and the double click itself.
 
 ## In progress
 
-- Double click counting as 2: done, waiting for the user's review (not committed).
+- Nothing. Everything above is committed.
 
 ## Next session
 
