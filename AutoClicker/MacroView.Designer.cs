@@ -1,4 +1,4 @@
-namespace AutoClicker
+﻿namespace AutoClicker
 {
     partial class MacroView
     {
@@ -37,7 +37,7 @@ namespace AutoClicker
             this.lblComingSoon.ForeColor = System.Drawing.SystemColors.GrayText;
             this.lblComingSoon.Location = new System.Drawing.Point(0, 0);
             this.lblComingSoon.Name = "lblComingSoon";
-            this.lblComingSoon.Size = new System.Drawing.Size(284, 273);
+            this.lblComingSoon.Size = new System.Drawing.Size(284, 334);
             this.lblComingSoon.TabIndex = 0;
             this.lblComingSoon.Text = "Macro - coming soon";
             this.lblComingSoon.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
@@ -48,7 +48,7 @@ namespace AutoClicker
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.Controls.Add(this.lblComingSoon);
             this.Name = "MacroView";
-            this.Size = new System.Drawing.Size(284, 273);
+            this.Size = new System.Drawing.Size(284, 334);
             this.ResumeLayout(false);
 
         }

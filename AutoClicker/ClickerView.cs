@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.ComponentModel;
 using System.Windows.Forms;
 using AutoClicker.Properties;
@@ -145,12 +145,26 @@ namespace AutoClicker
 
             count++;
             UpdateCount();
+
+            // Click limit reached: stop by itself, just like pressing "Stop"
+            if (LimitReached)
+                StopClicking();
         }
+
+        // True when "Stop after" is checked and the counter got to the chosen number
+        private bool LimitReached => chkLimit.Checked && count >= numLimit.Value;
 
         // The options chosen in the "Click" group, translated from the combo boxes' positions.
         // Item 0 is "Left button" / "Single click", item 1 is "Right button" / "Double click"
         private MouseButtons SelectedButton => cmbButton.SelectedIndex == 1 ? MouseButtons.Right : MouseButtons.Left;
         private bool SelectedDoubleClick => cmbClickType.SelectedIndex == 1;
+
+        // Runs when "Stop after" is checked or unchecked: the number field only makes sense while it is checked
+        private void chkLimit_CheckedChanged(object sender, EventArgs e)
+        {
+            UpdateControls();
+            UpdateCount();
+        }
 
         #endregion
 
@@ -269,6 +283,9 @@ namespace AutoClicker
 
             cmbButton.SelectedIndex = Settings.Default.ClickButton == MouseButtons.Right ? 1 : 0;
             cmbClickType.SelectedIndex = Settings.Default.DoubleClick ? 1 : 0;
+
+            chkLimit.Checked = Settings.Default.LimitEnabled;
+            numLimit.Value = Math.Max(numLimit.Minimum, Math.Min(numLimit.Maximum, Settings.Default.ClickLimit));
         }
 
         // Saved only when the user picks a new hotkey that works. If the saved one is taken at startup,
@@ -279,13 +296,15 @@ namespace AutoClicker
             Settings.Default.Save();
         }
 
-        // Interval, button and single/double click. Called on Start and when the app closes
+        // Interval, button, single/double click and click limit. Called on Start and when the app closes
         // (the fields can change many times, only the values in use matter)
         private void SaveClickSettings()
         {
             Settings.Default.Interval = (int)numInterval.Value;
             Settings.Default.ClickButton = SelectedButton;
             Settings.Default.DoubleClick = SelectedDoubleClick;
+            Settings.Default.LimitEnabled = chkLimit.Checked;
+            Settings.Default.ClickLimit = (int)numLimit.Value;
             Settings.Default.Save();
         }
 
@@ -295,7 +314,8 @@ namespace AutoClicker
 
         private void UpdateCount()
         {
-            lblCount.Text = "Clicks: " + count;
+            // With a limit, also show the target: "Clicks: 40 / 100"
+            lblCount.Text = "Clicks: " + count + (chkLimit.Checked ? " / " + numLimit.Value : "");
         }
 
         // The ONLY place that enables/disables controls and changes the hotkey texts.
@@ -304,12 +324,14 @@ namespace AutoClicker
         {
             bool running = clickTimer.Enabled;
 
-            // While running: only "Stop" is enabled, the interval, click options and hotkey are locked
+            // While running: only "Stop" is enabled, the interval, click options, limit and hotkey are locked
             btnStart.Enabled = !running && !waitingForHotkey;
             btnStop.Enabled = running;
             numInterval.Enabled = !running;
             cmbButton.Enabled = !running;
             cmbClickType.Enabled = !running;
+            chkLimit.Enabled = !running;
+            numLimit.Enabled = !running && chkLimit.Checked;
             btnSetHotkey.Enabled = !running;
 
             btnSetHotkey.Text = waitingForHotkey ? "Cancel" : "Change";

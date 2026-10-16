@@ -70,5 +70,29 @@ namespace AutoClicker.Properties {
                 this["DoubleClick"] = value;
             }
         }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("False")]
+        public bool LimitEnabled {
+            get {
+                return ((bool)(this["LimitEnabled"]));
+            }
+            set {
+                this["LimitEnabled"] = value;
+            }
+        }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("100")]
+        public int ClickLimit {
+            get {
+                return ((int)(this["ClickLimit"]));
+            }
+            set {
+                this["ClickLimit"] = value;
+            }
+        }
     }
 }

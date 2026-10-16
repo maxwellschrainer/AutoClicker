@@ -50,18 +50,24 @@ Windows Forms app written in C# (.NET Framework 4.8): an **Auto Clicker + Macro,
   - Tested with the built exe: defaults show Left/Single; changed both combos to item 1 -> closed -> `user.config` had Right/True -> reopened showing Right button / Double click (screenshot). Macro screen checked at the new height. **Not tested: real right/double clicks** (Start makes real clicks).
 - **Interval minimum raised from 1 to 15 ms** (`numInterval.Minimum` in `ClickerView.Designer.cs`), the fastest the Timer really goes. A saved value below 15 is clamped by `LoadSettings` (tested: saved 1 -> opened and saved 15).
 
+- **Click limit (stop after N clicks)**:
+  - New "Click limit" group (`grpLimit`) between Click and Hotkey: `chkLimit` ("Stop after") + `numLimit` (1-1,000,000, default 100, thousands separator) + "clicks" label. Window 61 px taller again (`ClientSize` 284x374, views 284x334).
+  - `clickTimer_Tick` calls `StopClicking()` when `LimitReached` (`chkLimit.Checked && count >= numLimit.Value`). Counts actions, so a double click counts as 1.
+  - Counter shows `Clicks: N / limit` while the box is checked. `numLimit` enabled only when the box is checked; both locked while running. `chkLimit_CheckedChanged` refreshes the controls and the counter.
+  - Settings `LimitEnabled` (`bool`, False) and `ClickLimit` (`int`, 100), saved in `SaveClickSettings`, clamped in `LoadSettings`.
+  - Tested with the built exe: opens with the box unchecked and the number disabled (screenshot); ticked the box (BM_CLICK) -> closed -> `user.config` had `LimitEnabled` True -> reopened with the box checked, number enabled and "Clicks: 0 / 100" (screenshot). **Not tested: the automatic stop itself** (Start makes real clicks).
+
 ## In progress
 
-- Click options (button + single/double): done, waiting for the user's review (not committed). Earlier steps of this session (saved settings, exe rename, 15 ms minimum) are also not committed yet.
+- Nothing. Click limit committed; its automatic stop still needs a manual test by the user (real clicks).
 
 ## Next session
 
-The user wants to **finish the Auto Clicker first**, then start the Macro. Next candidate: the optional click limit (stop after N clicks), or `SendInput`. Confirm with the user.
+The user wants to **finish the Auto Clicker first**, then start the Macro. Remaining Auto Clicker item: `SendInput` instead of `mouse_event`. After that, design the Macro screen with the user.
 
 ## To do
 
 Auto Clicker (finish first):
-- [ ] Optional click limit (stop after N clicks).
 - [ ] Consider replacing `mouse_event` with `SendInput` (the recommended API).
 
 Macro (after the Auto Clicker):
@@ -98,4 +104,5 @@ General:
 - **Settings are per exe path**: .NET stores `user.config` under a hash of the exe's path, so Debug, Release and copies elsewhere keep separate settings.
 - **Click options as DropDownList combos** (not radio buttons): compact, one row, and two radio groups would need extra panels. Code uses `SelectedIndex`, so the item texts can change freely.
 - **A double click counts as 1** in the counter: it counts actions (Ticks), which is also what a future "stop after N clicks" limit should use.
+- **Click limit as a CheckBox + number** (not "0 = no limit"): clearer for the user, and the last number stays saved when the limit is turned off.
 - **Language**: code, comments, README, NOTES.md and commit messages in English.

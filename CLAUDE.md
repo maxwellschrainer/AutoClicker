@@ -35,11 +35,11 @@ AutoClicker/                 ← git repo root (this folder)
    ├─ AutoClicker.csproj     ← old-style csproj (see below)
    ├─ Program.cs             ← Main → Application.Run(new MaxClicks())
    ├─ MaxClicks.*            ← main Form: header + switch button + slide between screens
-   ├─ ClickerView.*          ← UserControl: auto clicker screen (interval, click options, hotkey, start/stop, counter)
+   ├─ ClickerView.*          ← UserControl: auto clicker screen (interval, click options, click limit, hotkey, start/stop, counter)
    ├─ MacroView.*            ← UserControl: macro screen (placeholder, not implemented)
    ├─ Mouse.cs               ← P/Invoke mouse_event: Click(button), DoubleClick(button)
    ├─ GlobalHotkey.cs        ← P/Invoke RegisterHotKey/UnregisterHotKey + WM_HOTKEY
-   └─ Properties/Settings.*  ← saved settings (Hotkey, Interval, ClickButton, DoubleClick), mirrored in App.config
+   └─ Properties/Settings.*  ← saved settings (Hotkey, Interval, ClickButton, DoubleClick, LimitEnabled, ClickLimit), mirrored in App.config
 ```
 
 ## Build
@@ -70,7 +70,7 @@ There are no unit tests. Smoke-test the built exe with PowerShell (examples were
 
 - Launch with `Start-Process`, wait ~2 s, check `HasExited` / `MainWindowTitle`, then `CloseMainWindow()` (Kill as fallback).
 - Screenshot a window: `GetWindowRect` + `Graphics.CopyFromScreen`, then view the PNG.
-- Click a button: find its child HWND by text (`EnumChildWindows` + `GetWindowText`) and `SendMessage(h, BM_CLICK=0x00F5)`. UI Automation did not find the WinForms buttons; Win32 did.
+- Click a button or toggle a CheckBox: find its child HWND by text (`EnumChildWindows` + `GetWindowText`) and `SendMessage(h, BM_CLICK=0x00F5)`. UI Automation did not find the WinForms buttons; Win32 did.
 - Change a DropDownList ComboBox: they have no findable window text; find them by class name (`GetClassName` contains `COMBOBOX`, in tab order) and `SendMessage(h, CB_SETCURSEL=0x014E, index, 0)`. `SelectedIndex` reads the native selection, so saving picks it up.
 - Send a key to the app: `PostMessage(buttonHwnd, WM_KEYDOWN=0x0100, vk, 0)` (goes through `ProcessCmdKey`).
 - Check whether a hotkey is free: `RegisterHotKey(IntPtr.Zero, id, MOD_NOREPEAT=0x4000, vk)`; if it returns true, unregister it immediately. F6 = `0x75`, F7 = `0x76`.

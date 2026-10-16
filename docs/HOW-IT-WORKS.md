@@ -34,7 +34,7 @@ The Auto Clicker screen does three things:
 | `Program.cs` | Entry point. `Main()` runs first and opens the window: `Application.Run(new MaxClicks())`. |
 | `MaxClicks.cs` / `.Designer.cs` | **The main window** (the "frame"): header with the title and the switch button, and the area where the screens are shown. Handles the slide between screens. |
 | `MaxClicks.resx` | Extra data for the Designer (e.g. where the timer icon sits in the component tray). |
-| `ClickerView.cs` / `.Designer.cs` | **The Auto Clicker screen** (a UserControl): interval, click options (button, single/double), hotkey, Start/Stop, counter, and all their logic. |
+| `ClickerView.cs` / `.Designer.cs` | **The Auto Clicker screen** (a UserControl): interval, click options (button, single/double), click limit, hotkey, Start/Stop, counter, and all their logic. |
 | `MacroView.cs` / `.Designer.cs` | **The Macro screen** (a UserControl). Only a "coming soon" placeholder for now. |
 | `Mouse.cs` | Sends real clicks through Windows (`user32.dll`): `Click(button)` and `DoubleClick(button)`, left or right. |
 | `GlobalHotkey.cs` | Asks Windows to reserve/release a system-wide hotkey (`user32.dll`). |
@@ -214,7 +214,7 @@ The movement is linear (same speed all the way). To make it faster or slower, ch
 
 **Where:** `ClickerView.cs`.
 
-**Controls:** `numInterval` (milliseconds), `cmbButton` / `cmbClickType` (click options), `btnStart`, `btnStop`, `lblCount`, `clickTimer`.
+**Controls:** `numInterval` (milliseconds), `cmbButton` / `cmbClickType` (click options), `chkLimit` / `numLimit` (click limit), `btnStart`, `btnStop`, `lblCount`, `clickTimer`.
 
 The **Timer** is the engine. Once started, it raises `Tick` every `Interval` milliseconds, and **each Tick is one click**:
 
@@ -228,6 +228,9 @@ private void clickTimer_Tick(object sender, EventArgs e)
 
     count++;            // +1 (a double click counts as 1)
     UpdateCount();      // show it
+
+    if (LimitReached)   // "Stop after N clicks" reached?
+        StopClicking();
 }
 ```
 
@@ -236,7 +239,7 @@ private void clickTimer_Tick(object sender, EventArgs e)
 | `StartClicking()` | Resets `count`, copies the interval into the timer, starts the timer, updates the controls. |
 | `StopClicking()` | Stops the timer, updates the controls. |
 | `ToggleClicking()` | Start if stopped, stop if running (used by the hotkey). |
-| `UpdateCount()` | Writes `"Clicks: N"` in the label. |
+| `UpdateCount()` | Writes `"Clicks: N"` in the label (`"Clicks: N / limit"` when the click limit is on). |
 | `UpdateControls()` | See [One place for the screen state](#one-place-for-the-screen-state). |
 
 The Start/Stop buttons and the hotkey all call these same methods, so the logic exists in one place only.
@@ -270,6 +273,25 @@ private bool SelectedDoubleClick => cmbClickType.SelectedIndex == 1;
 **Counter:** a double click counts as **1** (one action per Tick), so the counter means "how many times the clicker acted".
 
 The combos are locked while running (`UpdateControls`), like the interval. In the Visual Studio Designer they look empty: the selection is set by `LoadSettings`, which doesn't run there.
+
+### Click limit (stop after N clicks)
+
+The "Click limit" group has a **CheckBox** `chkLimit` ("Stop after") and a **NumericUpDown** `numLimit` (1 to 1,000,000, default 100). Unchecked = no limit, the clicker runs until Stop.
+
+After each click, `clickTimer_Tick` asks one `=>` property:
+
+```csharp
+private bool LimitReached => chkLimit.Checked && count >= numLimit.Value;
+```
+
+When it is `true`, it calls `StopClicking()`, the same method the Stop button uses, so the buttons and fields go back to "stopped" without any extra code.
+
+- `&&` ("and") stops at the first `false`: with the box unchecked, the number is not even looked at.
+- `count` is an `int` and `numLimit.Value` a `decimal`; C# converts the `int` to `decimal` by itself to compare them (no data can be lost that way).
+- `>=` instead of `==`: safe even if `count` somehow got past the limit.
+- It counts **actions** (Ticks), so with "Double click" a limit of 10 means 10 double clicks.
+
+`chkLimit_CheckedChanged` runs when the box is ticked or unticked and calls `UpdateControls()` (the number field is enabled only while the box is checked) and `UpdateCount()` (to add or remove the "/ limit" part of the label). Both controls are locked while running.
 
 **Known limit: the interval is not exact.** The WinForms Timer only fires on Windows' clock "ticks", about every **15.6 ms**, and always rounds the interval **up** to the next tick. Measured on the dev PC (2026-10-16):
 
@@ -380,7 +402,7 @@ App closes
 
 **Where:** `Properties/Settings.settings` (the list), `ClickerView.cs` region "Saved Settings" (load/save).
 
-The hotkey, the interval and the click options are remembered between runs using **application settings**, a feature of .NET Framework:
+The hotkey, the interval, the click options and the click limit are remembered between runs using **application settings**, a feature of .NET Framework:
 
 1. `Settings.settings` lists each value with a **name**, a **type** and a **default**:
 
@@ -390,19 +412,21 @@ The hotkey, the interval and the click options are remembered between runs using
    | `Interval` | `int` | `100` |
    | `ClickButton` | `System.Windows.Forms.MouseButtons` | `Left` |
    | `DoubleClick` | `bool` | `False` |
+   | `LimitEnabled` | `bool` | `False` |
+   | `ClickLimit` | `int` | `100` |
 
 2. Visual Studio turns that list into a class, `Properties.Settings`, with one property per value. `Settings.Default` is the single shared instance: `Settings.Default.Hotkey` reads the saved hotkey, `Settings.Default.Hotkey = X` changes it **in memory only**, and `Settings.Default.Save()` writes everything to disk.
 3. Scope **User** means each Windows user has their own copy, and the app is allowed to change it. (Scope *Application* would be read-only.)
 
 | Method | When | What |
 |---|---|---|
-| `LoadSettings()` | `OnLoad`, before registering the hotkey | Copies the saved hotkey into `hotkey`, the interval into `numInterval`, and selects the saved button / click type in the combos. |
+| `LoadSettings()` | `OnLoad`, before registering the hotkey | Copies the saved hotkey into `hotkey`, the interval into `numInterval`, selects the saved button / click type in the combos, and sets the click limit box and number. |
 | `SaveHotkey()` | `FinishHotkeyCapture`, only if the new hotkey was registered | Saves `hotkey`. |
-| `SaveClickSettings()` | `StartClicking` and `OnHandleDestroyed` (the app is closing) | Saves the interval, the button and single/double. Not on every change (the fields can change many times): on Start, so they survive a crash, and on close, so a choice made without starting is kept too. |
+| `SaveClickSettings()` | `StartClicking` and `OnHandleDestroyed` (the app is closing) | Saves the interval, the button, single/double and the click limit. Not on every change (the fields can change many times): on Start, so they survive a crash, and on close, so a choice made without starting is kept too. |
 
 **Why the hotkey is saved only on a successful change:** if the saved hotkey is taken by another program when the app opens, the screen shows "(none)". Saving at that moment would replace the user's choice with "none" for good; not saving keeps it, and the next run tries it again.
 
-**Why `LoadSettings` clamps the interval:** `NumericUpDown.Value` throws an error if given a number outside `Minimum`..`Maximum` (15..60000), and the settings file is plain text anyone can edit. `Math.Max(min, Math.Min(max, value))` forces the value into the range.
+**Why `LoadSettings` clamps the interval and the limit:** `NumericUpDown.Value` throws an error if given a number outside `Minimum`..`Maximum` (15..60000 for the interval, 1..1,000,000 for the limit), and the settings file is plain text anyone can edit. `Math.Max(min, Math.Min(max, value))` forces the value into the range.
 
 **Where the file lives:** `%LOCALAPPDATA%\AutoClicker\MaxClicks.exe_Url_<hash>\1.0.0.0\user.config`, a small XML file. (`AutoClicker` is the namespace, used because `AssemblyCompany` is empty; `MaxClicks.exe` is the exe name.) Things to know:
 
@@ -427,13 +451,13 @@ bool running = clickTimer.Enabled;   // is the timer running?
 
 and sets every control to match:
 
-| State | Start | Stop | Interval + click combos | Change button | Hotkey label |
-|---|---|---|---|---|---|
-| Stopped | on | off | on | on, "Change" | current hotkey |
-| Running | off | on | off | off | current hotkey |
-| Waiting for a hotkey | off | off | on | on, "Cancel" | "Press a key..." |
+| State | Start | Stop | Interval, click combos, "Stop after" box | Limit number | Change button | Hotkey label |
+|---|---|---|---|---|---|---|
+| Stopped | on | off | on | on if the box is checked | on, "Change" | current hotkey |
+| Running | off | on | off | off | off | current hotkey |
+| Waiting for a hotkey | off | off | on | on if the box is checked | on, "Cancel" | "Press a key..." |
 
-Every method that changes the state (`StartClicking`, `StopClicking`, `StartHotkeyCapture`, `FinishHotkeyCapture`, `OnLoad`) just calls `UpdateControls()` at the end. When a new state or control appears, only this method changes.
+Every method that changes the state (`StartClicking`, `StopClicking`, `StartHotkeyCapture`, `FinishHotkeyCapture`, `chkLimit_CheckedChanged`, `OnLoad`) just calls `UpdateControls()` at the end. When a new state or control appears, only this method changes.
 
 ---
 
@@ -457,7 +481,7 @@ Regions are grouped **by feature**, and inside each one the methods follow the o
 | Fields | Clicking: `count`. Hotkey: `HotkeyId`, `hotkey`, `waitingForHotkey`. Designer: `inDesigner` |
 | Constructor | `ClickerView()` |
 | Control Lifecycle | `OnLoad` (first shown), `OnVisibleChanged` (hidden/shown), `OnHandleDestroyed` (destroyed when the window closes) |
-| Clicking | `btnStart_Click`, `btnStop_Click` → `StartClicking`, `StopClicking`, `ToggleClicking` → `clickTimer_Tick` → `SelectedButton`, `SelectedDoubleClick` |
+| Clicking | `btnStart_Click`, `btnStop_Click` → `StartClicking`, `StopClicking`, `ToggleClicking` → `clickTimer_Tick` → `LimitReached`, `SelectedButton`, `SelectedDoubleClick`, `chkLimit_CheckedChanged` |
 | Hotkey: Choosing a New One | Steps 1–4: `btnSetHotkey_Click` → `StartHotkeyCapture` → `ProcessCmdKey` → `FinishHotkeyCapture` |
 | Hotkey: Registering and Receiving | `TryRegisterHotkey`, `WndProc`, `ShowHotkeyTakenWarning`, `HotkeyToText` |
 | Saved Settings | `LoadSettings`, `SaveHotkey`, `SaveClickSettings` |

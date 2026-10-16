@@ -42,10 +42,16 @@
             this.grpClick = new System.Windows.Forms.GroupBox();
             this.cmbClickType = new System.Windows.Forms.ComboBox();
             this.cmbButton = new System.Windows.Forms.ComboBox();
+            this.grpLimit = new System.Windows.Forms.GroupBox();
+            this.lblLimitClicks = new System.Windows.Forms.Label();
+            this.numLimit = new System.Windows.Forms.NumericUpDown();
+            this.chkLimit = new System.Windows.Forms.CheckBox();
             this.grpInterval.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.numInterval)).BeginInit();
             this.grpHotkey.SuspendLayout();
             this.grpClick.SuspendLayout();
+            this.grpLimit.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.numLimit)).BeginInit();
             this.SuspendLayout();
             // 
             // grpInterval
@@ -92,10 +98,10 @@
             // 
             // btnStart
             // 
-            this.btnStart.Location = new System.Drawing.Point(12, 200);
+            this.btnStart.Location = new System.Drawing.Point(12, 261);
             this.btnStart.Name = "btnStart";
             this.btnStart.Size = new System.Drawing.Size(125, 35);
-            this.btnStart.TabIndex = 3;
+            this.btnStart.TabIndex = 4;
             this.btnStart.Text = "Start";
             this.btnStart.UseVisualStyleBackColor = true;
             this.btnStart.Click += new System.EventHandler(this.btnStart_Click);
@@ -103,10 +109,10 @@
             // btnStop
             // 
             this.btnStop.Enabled = false;
-            this.btnStop.Location = new System.Drawing.Point(147, 200);
+            this.btnStop.Location = new System.Drawing.Point(147, 261);
             this.btnStop.Name = "btnStop";
             this.btnStop.Size = new System.Drawing.Size(125, 35);
-            this.btnStop.TabIndex = 4;
+            this.btnStop.TabIndex = 5;
             this.btnStop.Text = "Stop";
             this.btnStop.UseVisualStyleBackColor = true;
             this.btnStop.Click += new System.EventHandler(this.btnStop_Click);
@@ -114,10 +120,10 @@
             // lblCount
             // 
             this.lblCount.AutoSize = true;
-            this.lblCount.Location = new System.Drawing.Point(12, 247);
+            this.lblCount.Location = new System.Drawing.Point(12, 308);
             this.lblCount.Name = "lblCount";
             this.lblCount.Size = new System.Drawing.Size(47, 13);
-            this.lblCount.TabIndex = 5;
+            this.lblCount.TabIndex = 6;
             this.lblCount.Text = "Clicks: 0";
             // 
             // clickTimer
@@ -128,10 +134,10 @@
             // 
             this.grpHotkey.Controls.Add(this.btnSetHotkey);
             this.grpHotkey.Controls.Add(this.lblHotkey);
-            this.grpHotkey.Location = new System.Drawing.Point(12, 134);
+            this.grpHotkey.Location = new System.Drawing.Point(12, 195);
             this.grpHotkey.Name = "grpHotkey";
             this.grpHotkey.Size = new System.Drawing.Size(260, 55);
-            this.grpHotkey.TabIndex = 2;
+            this.grpHotkey.TabIndex = 3;
             this.grpHotkey.TabStop = false;
             this.grpHotkey.Text = "Hotkey (start / stop)";
             // 
@@ -192,11 +198,68 @@
             this.cmbButton.Size = new System.Drawing.Size(110, 21);
             this.cmbButton.TabIndex = 0;
             // 
+            // grpLimit
+            // 
+            this.grpLimit.Controls.Add(this.lblLimitClicks);
+            this.grpLimit.Controls.Add(this.numLimit);
+            this.grpLimit.Controls.Add(this.chkLimit);
+            this.grpLimit.Location = new System.Drawing.Point(12, 134);
+            this.grpLimit.Name = "grpLimit";
+            this.grpLimit.Size = new System.Drawing.Size(260, 55);
+            this.grpLimit.TabIndex = 2;
+            this.grpLimit.TabStop = false;
+            this.grpLimit.Text = "Click limit";
+            // 
+            // lblLimitClicks
+            // 
+            this.lblLimitClicks.AutoSize = true;
+            this.lblLimitClicks.Location = new System.Drawing.Point(198, 24);
+            this.lblLimitClicks.Name = "lblLimitClicks";
+            this.lblLimitClicks.Size = new System.Drawing.Size(34, 13);
+            this.lblLimitClicks.TabIndex = 2;
+            this.lblLimitClicks.Text = "clicks";
+            // 
+            // numLimit
+            // 
+            this.numLimit.Enabled = false;
+            this.numLimit.Location = new System.Drawing.Point(95, 22);
+            this.numLimit.Maximum = new decimal(new int[] {
+            1000000,
+            0,
+            0,
+            0});
+            this.numLimit.Minimum = new decimal(new int[] {
+            1,
+            0,
+            0,
+            0});
+            this.numLimit.Name = "numLimit";
+            this.numLimit.Size = new System.Drawing.Size(97, 20);
+            this.numLimit.TabIndex = 1;
+            this.numLimit.ThousandsSeparator = true;
+            this.numLimit.Value = new decimal(new int[] {
+            100,
+            0,
+            0,
+            0});
+            // 
+            // chkLimit
+            // 
+            this.chkLimit.AutoSize = true;
+            this.chkLimit.Location = new System.Drawing.Point(15, 23);
+            this.chkLimit.Name = "chkLimit";
+            this.chkLimit.Size = new System.Drawing.Size(74, 17);
+            this.chkLimit.TabIndex = 0;
+            this.chkLimit.Text = "Stop after";
+            this.chkLimit.UseVisualStyleBackColor = true;
+            this.chkLimit.CheckedChanged += new System.EventHandler(this.chkLimit_CheckedChanged);
+            // 
             // ClickerView
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.Size = new System.Drawing.Size(284, 273);
+            this.Size = new System.Drawing.Size(284, 334);
+            this.Controls.Add(this.grpLimit);
             this.Controls.Add(this.grpClick);
             this.Controls.Add(this.lblCount);
             this.Controls.Add(this.btnStop);
@@ -209,6 +272,9 @@
             ((System.ComponentModel.ISupportInitialize)(this.numInterval)).EndInit();
             this.grpHotkey.ResumeLayout(false);
             this.grpClick.ResumeLayout(false);
+            this.grpLimit.ResumeLayout(false);
+            this.grpLimit.PerformLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.numLimit)).EndInit();
             this.ResumeLayout(false);
             this.PerformLayout();
 
@@ -228,5 +294,9 @@
         private System.Windows.Forms.GroupBox grpClick;
         private System.Windows.Forms.ComboBox cmbButton;
         private System.Windows.Forms.ComboBox cmbClickType;
+        private System.Windows.Forms.GroupBox grpLimit;
+        private System.Windows.Forms.CheckBox chkLimit;
+        private System.Windows.Forms.NumericUpDown numLimit;
+        private System.Windows.Forms.Label lblLimitClicks;
     }
 }
