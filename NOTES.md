@@ -28,7 +28,6 @@ Windows Forms auto clicker written in C# (.NET Framework 4.8). The main form is 
   - Hotkey released in `OnFormClosed`.
   - Start/Stop logic moved into `StartClicking()` / `StopClicking()` so buttons and hotkey share it.
 - Review fixes:
-  - Only F1–F24 or Ctrl/Alt combinations are accepted as hotkey (`IsAllowedHotkey`), so a single key isn't stolen from every program.
   - If the hotkey can't be registered, it becomes `Keys.None` and the screen shows "(none)".
   - `UpdateControls()` (replaces `UpdateButtons(running)`) is the only place that enables/disables controls and sets the hotkey texts; it reads the state instead of receiving it.
   - Duplicated warning moved into `ShowHotkeyTakenWarning()`.
@@ -58,6 +57,6 @@ Windows Forms auto clicker written in C# (.NET Framework 4.8). The main form is 
 - **Regions by role and subject** (fields / constructor / overrides / event handlers / clicking / hotkey / UI updates), not by access modifier.
 - **`RegisterHotKey` instead of a keyboard hook**: simpler, and Windows delivers the key even when another app has focus. The current hotkey is unregistered while capturing a new one, otherwise Windows would swallow it.
 - **Hotkey shown in a "keycap" label inside a GroupBox**, matching the interval group, instead of a custom-styled button (keeps the native look consistent).
-- **Hotkey rule: F1–F24 or Ctrl/Alt + key.** Global hotkeys block the key everywhere; Shift alone isn't enough (Shift+letter types capitals).
+- **Any key can be the hotkey.** A restriction to F1–F24 / Ctrl/Alt combinations was tried and removed: the user should decide. Trade-off: a single key (e.g. `A`) is taken from every program while MaxClicks is open.
 - **Screen state derived in one method** (`UpdateControls`) from `clickTimer.Enabled` and `waitingForHotkey`, instead of each method toggling controls.
 - **Language**: code, comments, README, NOTES.md and commit messages in English.

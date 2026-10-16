@@ -183,19 +183,14 @@ Receives every key pressed in the window **before** the controls do (including T
 - `waitingForHotkey == true` →
   - **Esc** → cancel, keep the old hotkey.
   - **Only Ctrl / Shift / Alt / Win** → ignore, keep waiting (so combinations like `Ctrl+F6` work).
-  - **Any other key** → if `IsAllowedHotkey(keyData)`: `FinishHotkeyCapture(keyData)`; otherwise a message explains the rule and it keeps waiting.
+  - **Any other key** → `FinishHotkeyCapture(keyData)`.
   - Returns `true` = "handled", so the key does not reach any button.
 
 `keyData` contains the key **plus** the modifiers. `keyData & Keys.KeyCode` keeps only the key.
 
-### Which keys are allowed (`IsAllowedHotkey`)
+### Any key is allowed
 
-A global hotkey **steals the key from every program**. If the hotkey were `A`, you could not type the letter "a" anywhere while MaxClicks is open. So only these are accepted:
-
-- **F1 to F24**, alone or with modifiers (`F6`, `Shift+F6`...).
-- **Any key combined with Ctrl or Alt** (`Ctrl+A`, `Alt+1`...).
-
-Shift alone is not enough: `Shift+A` is how you type a capital "A".
+The user can pick any key or combination, including a single letter or number. Keep in mind that a global hotkey **takes the key away from every program** while MaxClicks is open: with `A` as the hotkey, pressing A anywhere toggles the clicker instead of typing "a". This was a deliberate choice: the user decides.
 
 ### No hotkey (`Keys.None`)
 
@@ -212,10 +207,9 @@ User clicks "Change"
         (the current key must be released, or Windows would catch it before the window sees it)
 
 User presses Ctrl+F7
-  └─> ProcessCmdKey ─> IsAllowedHotkey? (no → message, keep waiting)
-        └─> FinishHotkeyCapture
-              ├─ Register(Ctrl+F7) ok   → becomes the hotkey
-              └─ Register fails         → warning, Register(old one) again (fails too → none)
+  └─> ProcessCmdKey ─> FinishHotkeyCapture
+        ├─ Register(Ctrl+F7) ok   → becomes the hotkey
+        └─ Register fails         → warning, Register(old one) again (fails too → none)
 
 User presses Ctrl+F7 anywhere in Windows
   └─> Windows sends WM_HOTKEY ─> WndProc ─> ToggleClicking ─> Start / Stop
@@ -258,7 +252,7 @@ Every method that changes the state (`StartClicking`, `StopClicking`, `StartHotk
 | Form Overrides | `OnLoad`, `OnFormClosed`, `WndProc`, `ProcessCmdKey`: replacements of `Form` behavior |
 | Event Handlers | `btnStart_Click`, `btnStop_Click`, `clickTimer_Tick`, `btnSetHotkey_Click` |
 | Clicking | `StartClicking`, `StopClicking`, `ToggleClicking` |
-| Hotkey | `StartHotkeyCapture`, `FinishHotkeyCapture`, `TryRegisterHotkey`, `IsAllowedHotkey`, `ShowHotkeyTakenWarning`, `HotkeyToText` |
+| Hotkey | `StartHotkeyCapture`, `FinishHotkeyCapture`, `TryRegisterHotkey`, `ShowHotkeyTakenWarning`, `HotkeyToText` |
 | UI Updates | `UpdateCount`, `UpdateControls` |
 
 `#region` changes nothing in the program; it only lets the editor fold blocks.

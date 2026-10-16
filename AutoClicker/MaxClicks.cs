@@ -79,17 +79,7 @@ namespace AutoClicker
             else if (key != Keys.ControlKey && key != Keys.ShiftKey && key != Keys.Menu
                      && key != Keys.LWin && key != Keys.RWin)
             {
-                if (IsAllowedHotkey(keyData))
-                {
-                    FinishHotkeyCapture(keyData);
-                }
-                else
-                {
-                    // Keep waiting: the user can try another key right away
-                    MessageBox.Show("Use a function key (F1-F24) or a combination with Ctrl or Alt.\n" +
-                        "A single key like \"A\" would be blocked in every other program while MaxClicks is open.",
-                        "MaxClicks", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                }
+                FinishHotkeyCapture(keyData);
             }
             return true; // true = "already handled", the key goes nowhere else
         }
@@ -193,18 +183,6 @@ namespace AutoClicker
         private bool TryRegisterHotkey(Keys keys)
         {
             return keys != Keys.None && GlobalHotkey.Register(Handle, HotkeyId, keys);
-        }
-
-        // A global hotkey steals the key from every program, so a single letter or Space
-        // would stop working everywhere. Only F1-F24 alone, or combinations with Ctrl/Alt, are allowed.
-        // (Shift alone isn't enough: Shift+A is how you type a capital "A")
-        private static bool IsAllowedHotkey(Keys keyData)
-        {
-            Keys key = keyData & Keys.KeyCode;
-            bool isFunctionKey = key >= Keys.F1 && key <= Keys.F24;
-            bool hasCtrlOrAlt = (keyData & Keys.Control) == Keys.Control || (keyData & Keys.Alt) == Keys.Alt;
-
-            return isFunctionKey || hasCtrlOrAlt;
         }
 
         private void ShowHotkeyTakenWarning(Keys keys)
