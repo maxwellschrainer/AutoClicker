@@ -2,7 +2,7 @@
 
 Current state of the project. Updated at the end of each step.
 
-_Last updated: 2026-10-15_
+_Last updated: 2026-10-16_
 
 ## Overview
 
@@ -19,8 +19,8 @@ Windows Forms auto clicker written in C# (.NET Framework 4.8). The main form is 
 - Clicking loop: Start sets `Timer.Interval` from the input and starts the timer; each `Tick` calls `Mouse.LeftClick()` and increments the counter; Stop stops the timer.
 - While running, only Stop is enabled and the interval input is locked.
 - All identifiers, UI text and comments translated to English (`grpInterval`, `numInterval`, `btnStart`, `btnStop`, `lblCount`, `clickTimer`, `UpdateCount`, `UpdateButtons`). Builds with no errors or warnings.
-- `MaxClicks.cs` organized in regions: Fields, Constructor, Event Handlers, Helper Methods.
-
+- `MaxClicks.cs` organized in regions: Fields, Constructor, Form Overrides, Event Handlers, Helper Methods.
+- `Mouse.cs` moved into the `AutoClicker` namespace.
 - Global hotkey to start/stop (default F6), chosen by the user:
   - `GlobalHotkey.cs` wraps `user32.dll` `RegisterHotKey` / `UnregisterHotKey` (supports Ctrl/Alt/Shift + key, no auto-repeat).
   - "Hotkey (start / stop)" group: key shown in a bordered label + "Change" button. Clicking "Change" waits for the next key (`ProcessCmdKey`); Esc or "Cancel" keeps the old one; a combination already taken by another program shows a warning and keeps the old one.
@@ -30,7 +30,8 @@ Windows Forms auto clicker written in C# (.NET Framework 4.8). The main form is 
 
 ## In progress
 
-- Hotkey feature builds with no errors, **not tested in the running app yet**; awaiting the user's review.
+- Nothing. Hotkey feature committed and pushed.
+- `README.md` and `docs/HOW-IT-WORKS.md` (code manual) created, not committed yet.
 
 ## To do
 
@@ -38,7 +39,11 @@ Windows Forms auto clicker written in C# (.NET Framework 4.8). The main form is 
 - [ ] Choose mouse button (left / right) and single / double click.
 - [ ] Optional click limit (stop after N clicks).
 - [ ] Consider replacing `mouse_event` with `SendInput` (the recommended API).
-- [ ] Push local commits to `origin` (GitHub `maxwellschrainer/AutoClicker`).
+
+## Documentation
+
+- `README.md`: what the app is and how to use it.
+- `docs/HOW-IT-WORKS.md`: manual of the code (files, concepts, each feature's flow, glossary). **Update it whenever a feature or concept is added or changed.**
 
 ## Decisions
 
