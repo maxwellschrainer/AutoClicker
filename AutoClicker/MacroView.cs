@@ -2,13 +2,15 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics;
+using System.IO;
 using System.Windows.Forms;
 using AutoClicker.Properties;
 
 namespace AutoClicker
 {
     // The Macro screen: records keys and mouse clicks (with the waits between them) and plays them back,
-    // a chosen number of times or forever, with a pause between runs
+    // a chosen number of times or forever, with a pause between runs and at a chosen speed.
+    // Macros can also be saved to and loaded from files
     public partial class MacroView : UserControl
     {
         #region Fields
@@ -23,6 +25,9 @@ namespace AutoClicker
         // Windows' clock (ms) at the last recorded step, to work out the wait before the next one
         private uint lastStepTime;
 
+        // Index of the first step of the current recording (0, or the old length when adding to the end)
+        private int recordStart;
+
         // Longest wait a step can have: 1 hour (the same as numStepDelay.Maximum)
         private const int MaxDelay = 3600000;
 
@@ -35,6 +40,9 @@ namespace AutoClicker
         // Measures the time since Play. Each step has a planned moment (nextStepAt, in ms since Play)
         private readonly Stopwatch playClock = new Stopwatch();
         private long nextStepAt;
+
+        // Playback speed, read from numSpeed on Play: 2 = waits are half as long, 0.5 = twice as long
+        private double speed = 1;
 
         // Keys and buttons the macro pressed and has not released yet; released on Stop,
         // so nothing stays "stuck" down
@@ -113,9 +121,10 @@ namespace AutoClicker
                 StartRecording();
         }
 
-        // A new recording replaces the current macro
+        // A new recording replaces the current macro, or is added to its end with "Add to the end" ticked
         private void StartRecording()
         {
+            recorder.RecordMoves = chkRecordMoves.Checked;
             if (!recorder.Start())
             {
                 MessageBox.Show("Windows did not allow MaxClicks to record the keyboard and mouse.",
@@ -123,7 +132,10 @@ namespace AutoClicker
                 return;
             }
 
-            steps.Clear();
+            if (!chkAppend.Checked)
+                steps.Clear();
+            recordStart = steps.Count;
+
             RefreshSteps();
             UpdateControls();
         }
@@ -131,7 +143,7 @@ namespace AutoClicker
         private void StopRecording()
         {
             recorder.Stop();
-            RemoveUnpairedSteps();
+            RemoveUnpairedSteps(recordStart);
             RefreshSteps();
 
             // Saved right away, so a long recording is not lost if the app is killed
@@ -145,9 +157,9 @@ namespace AutoClicker
             if (IsOwnInput(step))
                 return;
 
-            // The first step starts right away: the time before it (going from the Record button
+            // The first step of a recording starts right away: the time before it (going from the Record button
             // to the place to click) is not part of the macro
-            if (steps.Count == 0)
+            if (steps.Count == recordStart)
                 step.Delay = 0;
             else
                 step.Delay = (int)Math.Min(MaxDelay, time - lastStepTime);  // uint math: also right when the clock wraps around
@@ -187,13 +199,14 @@ namespace AutoClicker
 
         // Cleans the recording: a press with no release (e.g. Ctrl of a Ctrl+F8 hotkey) would leave the key
         // stuck down during playback, and a release with no press (a key already held when recording started)
-        // is noise. Their waits are passed to the next step, so the timing of the others doesn't change
-        private void RemoveUnpairedSteps()
+        // is noise. Their waits are passed to the next step, so the timing of the others doesn't change.
+        // Only the steps from "start" on are checked: the older ones (when adding to the end) are left as they are
+        private void RemoveUnpairedSteps(int start)
         {
             List<int> openPresses = new List<int>();       // Indexes of presses not released yet
             List<int> toRemove = new List<int>();
 
-            for (int i = 0; i < steps.Count; i++)
+            for (int i = start; i < steps.Count; i++)
             {
                 if (steps[i].IsPress)
                 {
@@ -215,8 +228,8 @@ namespace AutoClicker
             for (int i = toRemove.Count - 1; i >= 0; i--)
                 RemoveStep(toRemove[i]);
 
-            if (steps.Count > 0)
-                steps[0].Delay = 0;
+            if (start < steps.Count)
+                steps[start].Delay = 0;
         }
 
         // Removes one step; its wait goes to the next one, so the steps after it keep their timing
@@ -254,7 +267,8 @@ namespace AutoClicker
         {
             run = 1;
             stepIndex = 0;
-            nextStepAt = steps[0].Delay;
+            speed = (double)numSpeed.Value;
+            nextStepAt = Scaled(steps[0].Delay);
             held.Clear();
 
             // Also saved here, not only on close: if the app is killed or crashes, the choices are not lost
@@ -292,7 +306,7 @@ namespace AutoClicker
 
                 if (stepIndex < steps.Count)
                 {
-                    nextStepAt += steps[stepIndex].Delay;
+                    nextStepAt += Scaled(steps[stepIndex].Delay);
                     continue;
                 }
 
@@ -304,13 +318,19 @@ namespace AutoClicker
                 }
                 run++;
                 stepIndex = 0;
-                nextStepAt += (long)numPause.Value + steps[0].Delay;
+                nextStepAt += (long)numPause.Value + Scaled(steps[0].Delay);   // The pause is not affected by the speed
 
                 // Wait for the next tick before the next run: a macro with no waits at all would
                 // otherwise keep this loop busy forever and freeze the window
                 break;
             }
             UpdateStatus();
+        }
+
+        // A step's wait at the chosen speed (e.g. 300 ms at speed 2 = 150 ms)
+        private long Scaled(int delay)
+        {
+            return (long)Math.Round(delay / speed);
         }
 
         // Plays one step, shows it selected in the list, and keeps track of what is held down
@@ -355,6 +375,11 @@ namespace AutoClicker
         }
 
         private void numPause_ValueChanged(object sender, EventArgs e)
+        {
+            UpdateStatus();
+        }
+
+        private void numSpeed_ValueChanged(object sender, EventArgs e)
         {
             UpdateStatus();
         }
@@ -424,6 +449,93 @@ namespace AutoClicker
 
         #endregion
 
+        #region Macro Files
+
+        // First line of every macro file, to recognize it (and its format version)
+        private const string FileHeader = "MaxClicks macro 1";
+
+        // Saves the steps to a text file: the header, then one step per line (MacroStep.ToSaveText)
+        private void btnSave_Click(object sender, EventArgs e)
+        {
+            if (saveFileDialog.ShowDialog(this) != DialogResult.OK)
+                return;
+
+            List<string> lines = new List<string> { FileHeader };
+            foreach (MacroStep step in steps)
+                lines.Add(step.ToSaveText());
+
+            // Files can fail for reasons outside the app (no permission, disk full...): tell the user instead of crashing
+            try
+            {
+                File.WriteAllLines(saveFileDialog.FileName, lines);
+            }
+            catch (Exception ex) when (ex is IOException || ex is UnauthorizedAccessException)
+            {
+                ShowFileError("Could not save the macro.", ex);
+            }
+        }
+
+        // Replaces the current macro with the one in a file. If the file is not a valid macro, nothing changes
+        private void btnLoad_Click(object sender, EventArgs e)
+        {
+            if (openFileDialog.ShowDialog(this) != DialogResult.OK)
+                return;
+
+            string[] lines;
+            try
+            {
+                lines = File.ReadAllLines(openFileDialog.FileName);
+            }
+            catch (Exception ex) when (ex is IOException || ex is UnauthorizedAccessException)
+            {
+                ShowFileError("Could not open the file.", ex);
+                return;
+            }
+
+            List<MacroStep> loaded = null;
+            if (lines.Length > 0 && lines[0] == FileHeader)
+                loaded = ParseSteps(new List<string>(lines).GetRange(1, lines.Length - 1));
+
+            if (loaded == null)
+            {
+                MessageBox.Show("This file is not a MaxClicks macro, or it is damaged.", "MaxClicks",
+                    MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
+            steps.Clear();
+            steps.AddRange(loaded);
+            RefreshSteps();
+            SaveMacroSettings(); // The loaded macro is also the one that opens next time
+        }
+
+        // Turns saved texts (one per step) back into steps. Empty lines are skipped.
+        // Returns null if any text is not a valid step, so a damaged macro is never half-loaded
+        private static List<MacroStep> ParseSteps(IEnumerable<string> texts)
+        {
+            List<MacroStep> result = new List<MacroStep>();
+            foreach (string text in texts)
+            {
+                if (text.Trim().Length == 0)
+                    continue;
+
+                MacroStep step = MacroStep.FromSaveText(text.Trim());
+                if (step == null)
+                    return null;
+
+                step.Delay = Math.Min(MaxDelay, step.Delay);
+                result.Add(step);
+            }
+            return result;
+        }
+
+        private void ShowFileError(string message, Exception ex)
+        {
+            MessageBox.Show(message + "\n" + ex.Message, "MaxClicks", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+        }
+
+        #endregion
+
         #region Hotkeys
 
         // Runs when the user picks a new Record or Play hotkey and Windows accepted it
@@ -449,24 +561,15 @@ namespace AutoClicker
             numRepeat.Value = Math.Max(numRepeat.Minimum, Math.Min(numRepeat.Maximum, Settings.Default.MacroRepeat));
             numPause.Value = Math.Max(numPause.Minimum, Math.Min(numPause.Maximum, Settings.Default.MacroPause));
             chkForever.Checked = Settings.Default.MacroForever;
+            numSpeed.Value = Math.Max(numSpeed.Minimum, Math.Min(numSpeed.Maximum, Settings.Default.MacroSpeed));
+            chkAppend.Checked = Settings.Default.MacroAppend;
+            chkRecordMoves.Checked = Settings.Default.MacroRecordMoves;
 
-            // One step per line of numbers, separated by ";". If any step is broken, the macro is not loaded
+            // The steps, separated by ";". If any step is broken, the macro starts empty
             steps.Clear();
-            string saved = Settings.Default.MacroSteps;
-            if (string.IsNullOrEmpty(saved))
-                return;
-
-            foreach (string text in saved.Split(';'))
-            {
-                MacroStep step = MacroStep.FromSaveText(text);
-                if (step == null)
-                {
-                    steps.Clear();
-                    return;
-                }
-                step.Delay = Math.Min(MaxDelay, step.Delay);
-                steps.Add(step);
-            }
+            List<MacroStep> saved = ParseSteps(Settings.Default.MacroSteps.Split(';'));
+            if (saved != null)
+                steps.AddRange(saved);
         }
 
         // The steps and the playback options. Called after recording, on Play and when the app closes
@@ -481,6 +584,9 @@ namespace AutoClicker
             Settings.Default.MacroRepeat = (int)numRepeat.Value;
             Settings.Default.MacroForever = chkForever.Checked;
             Settings.Default.MacroPause = (int)numPause.Value;
+            Settings.Default.MacroSpeed = numSpeed.Value;
+            Settings.Default.MacroAppend = chkAppend.Checked;
+            Settings.Default.MacroRecordMoves = chkRecordMoves.Checked;
             Settings.Default.Save();
         }
 
@@ -524,7 +630,7 @@ namespace AutoClicker
             }
             else if (playTimer.Enabled)
             {
-                string runs = chkForever.Checked ? "∞" : numRepeat.Value.ToString(); // ∞ = infinity sign
+                string runs = chkForever.Checked ? "\u221E" : numRepeat.Value.ToString(); // \u221E = infinity sign
                 int shownStep = Math.Max(1, stepIndex);   // stepIndex is the NEXT step; 0 between runs
                 lblStatus.Text = "Run " + run + " / " + runs + "  -  step " + shownStep + " / " + steps.Count;
             }
@@ -538,7 +644,9 @@ namespace AutoClicker
                 foreach (MacroStep step in steps)
                     runTime += step.Delay;
 
-                lblStatus.Text = steps.Count + " steps, " + (runTime / 1000.0).ToString("0.0") + " s per run";
+                // At the chosen speed (the pause between runs is not included)
+                double seconds = runTime / (double)numSpeed.Value / 1000.0;
+                lblStatus.Text = steps.Count + " steps, " + seconds.ToString("0.0") + " s per run";
             }
         }
 
@@ -551,27 +659,26 @@ namespace AutoClicker
             bool stepSelected = SelectedIndex >= 0;
 
             btnRecord.Enabled = !playing;
-            btnRecord.Text = WithHotkey(recording ? "Stop recording" : "Record", hkRecord.Hotkey);
+            btnRecord.Text = HotkeyButton.AddHotkey(recording ? "Stop recording" : "Record", hkRecord.Hotkey);
             btnPlay.Enabled = !recording && steps.Count > 0;
-            btnPlay.Text = WithHotkey(playing ? "Stop" : "Play", hkPlay.Hotkey);
+            btnPlay.Text = HotkeyButton.AddHotkey(playing ? "Stop" : "Play", hkPlay.Hotkey);
 
             numStepDelay.Enabled = !IsBusy && stepSelected;
             btnDeleteStep.Enabled = !IsBusy && stepSelected;
             btnClear.Enabled = !IsBusy && steps.Count > 0;
+            btnLoad.Enabled = !IsBusy;
+            btnSave.Enabled = !IsBusy && steps.Count > 0;
 
             numRepeat.Enabled = !playing && !chkForever.Checked;
             chkForever.Enabled = !playing;
             numPause.Enabled = !playing;
+            numSpeed.Enabled = !playing;
+
+            chkAppend.Enabled = !recording;
+            chkRecordMoves.Enabled = !recording;
 
             hkRecord.Enabled = !IsBusy;
             hkPlay.Enabled = !IsBusy;
-        }
-
-        // "Record" + F8 = "Record (F8)": the big buttons show their hotkey, so it is clear that the
-        // small key buttons below only change the hotkeys
-        private static string WithHotkey(string text, Keys hotkey)
-        {
-            return hotkey == Keys.None ? text : text + " (" + HotkeyButton.HotkeyToText(hotkey) + ")";
         }
 
         #endregion

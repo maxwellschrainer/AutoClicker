@@ -6,7 +6,7 @@ namespace AutoClicker
 {
     // A button that shows a global hotkey and lets the user change it: click it, then press the new key
     // or combination (Esc cancels). When the hotkey is pressed anywhere in Windows, it raises HotkeyPressed.
-    // Same idea as the hotkey of the Auto Clicker screen, packed into one reusable control
+    // Used by both screens: the Auto Clicker's start/stop hotkey and the Macro's Record and Play hotkeys
     public class HotkeyButton : Button
     {
         #region Fields
@@ -185,6 +185,12 @@ namespace AutoClicker
                 return "(none)";
 
             return new KeysConverter().ConvertToString(keys);
+        }
+
+        // "Start" + F6 = "Start (F6)": the screens' big buttons show their hotkey
+        public static string AddHotkey(string text, Keys keys)
+        {
+            return keys == Keys.None ? text : text + " (" + HotkeyToText(keys) + ")";
         }
 
         private void UpdateText()

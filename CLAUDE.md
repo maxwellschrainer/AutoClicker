@@ -47,10 +47,10 @@ AutoClicker/                 ← git repo root (this folder)
    ├─ Program.cs             ← Main → Application.Run(new MaxClicks())
    ├─ MaxClicks.*            ← main Form: header + switch button + slide between screens
    ├─ ClickerView.*          ← UserControl: auto clicker screen (interval, click options, click limit, hotkey, start/stop, counter)
-   ├─ MacroView.*            ← UserControl: macro screen (step list + editing, playback options, hotkeys, record/play)
+   ├─ MacroView.*            ← UserControl: macro screen (step list + editing, load/save, playback and recording options, hotkeys, record/play)
    ├─ MacroStep.cs           ← one macro step: data, Play(), save/load as text
    ├─ InputRecorder.cs       ← low-level keyboard/mouse hooks used while recording
-   ├─ HotkeyButton.cs        ← Button subclass: shows/changes/registers one global hotkey (Macro's Record/Play)
+   ├─ HotkeyButton.cs        ← Button subclass: shows/changes/registers one global hotkey (used for every hotkey)
    ├─ NativeInput.cs         ← P/Invoke SendInput + INPUT structs (mouse/keyboard union)
    ├─ Mouse.cs / Keyboard.cs ← send mouse / key input through NativeInput
    ├─ PhysicalScreen.cs      ← cursor move / window-at-point in real pixels (display scaling)
@@ -74,12 +74,13 @@ Expect zero errors and zero warnings. The output is `MaxClicks.exe` (assembly na
 - **Designer files** (`*.Designer.cs`) are edited by hand here, but keep them in the exact format the VS Designer generates, so the user can keep editing visually. Renaming a component also requires renaming its `*.TrayLocation` metadata in the `.resx`.
 - **The VS Designer runs UserControl code** (constructor, `OnLoad`) inside `devenv.exe`. Anything that touches Windows (hotkeys, clicks, files) must be skipped there: `ClickerView` and `MacroView` check `inDesigner || DesignMode` (`inDesigner` is set in the constructor from `LicenseManager.UsageMode`). Forgetting this made Visual Studio hold F6.
 - **After changing a UserControl**, the user must rebuild in VS and close/reopen the `[Design]` tab for the Designer to load the new code.
-- **Global hotkeys** are registered on the handle of the control that uses them: `ClickerView` id `1`, `HotkeyButton`s ids `2` (Record) and `3` (Play). Only one process can hold a key: if a hotkey seems "taken", check who holds it (see `docs/TESTING.md`).
+- **Global hotkeys** are all `HotkeyButton`s, each registered on its own handle: `hkToggle` id `1` (Auto Clicker), `hkRecord` id `2`, `hkPlay` id `3`. A new hotkey needs a new unique id. Only one process can hold a key: if a hotkey seems "taken", check who holds it (see `docs/TESTING.md`).
+- **A screen's height lives in two places**: the UserControl's own `Size` and its `Size` in `MaxClicks.Designer.cs` (the second wins). Change both, or the window won't fit the screen (`FitWindowTo` uses the control's height).
 - **A hidden UserControl is not created** (no handle, no `OnLoad`) until shown. `macroView` starts visible out of sight and `MaxClicks.OnShown` hides it; don't set `Visible = false` in the Designer, or the Macro hotkeys stop working until the screen is opened.
 - **Playing a macro in a test sends real clicks and keys**; keys go to the active window, which may be the user's app. See "Macro" in `docs/TESTING.md`.
 - Use `System.Windows.Forms.Timer` (UI thread) for anything that updates controls. It only fires every ~15.6 ms (rounded up), and `timeBeginPeriod(1)` did not help: see "Known limit" in `docs/HOW-IT-WORKS.md`.
 - **Starting the clicker in a test makes real clicks** wherever the cursor is. Only automate Start with a test window under the cursor (see `docs/TESTING.md`).
-- Avoid non-ASCII characters in C# string literals; use escapes (`"►"`).
+- Avoid non-ASCII characters in C# string literals; use escapes (`"\u25BA"`). The Write tool (and shell heredocs) turn a typed `\u25BA` into the real character: write such lines with a script that builds the backslash (`chr(92)`), then check that `AutoClicker/*.cs` has no byte above 127.
 - **Saved settings** (`Properties.Settings`, see `docs/HOW-IT-WORKS.md`) are stored per exe path: the scratchpad build, `bin\Debug` and `bin\Release` each have their own (testing rules in `docs/TESTING.md`). `Settings.settings`, `Settings.Designer.cs` and `App.config` must stay in sync when adding a setting.
 
 ## Testing without the user

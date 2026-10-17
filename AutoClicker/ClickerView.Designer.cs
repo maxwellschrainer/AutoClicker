@@ -37,8 +37,7 @@
             this.lblCount = new System.Windows.Forms.Label();
             this.clickTimer = new System.Windows.Forms.Timer(this.components);
             this.grpHotkey = new System.Windows.Forms.GroupBox();
-            this.btnSetHotkey = new System.Windows.Forms.Button();
-            this.lblHotkey = new System.Windows.Forms.Label();
+            this.hkToggle = new AutoClicker.HotkeyButton();
             this.grpClick = new System.Windows.Forms.GroupBox();
             this.cmbClickType = new System.Windows.Forms.ComboBox();
             this.cmbButton = new System.Windows.Forms.ComboBox();
@@ -102,7 +101,7 @@
             this.btnStart.Name = "btnStart";
             this.btnStart.Size = new System.Drawing.Size(125, 35);
             this.btnStart.TabIndex = 4;
-            this.btnStart.Text = "Start";
+            this.btnStart.Text = "Start (F6)";
             this.btnStart.UseVisualStyleBackColor = true;
             this.btnStart.Click += new System.EventHandler(this.btnStart_Click);
             // 
@@ -113,7 +112,7 @@
             this.btnStop.Name = "btnStop";
             this.btnStop.Size = new System.Drawing.Size(125, 35);
             this.btnStop.TabIndex = 5;
-            this.btnStop.Text = "Stop";
+            this.btnStop.Text = "Stop (F6)";
             this.btnStop.UseVisualStyleBackColor = true;
             this.btnStop.Click += new System.EventHandler(this.btnStop_Click);
             // 
@@ -132,36 +131,26 @@
             // 
             // grpHotkey
             // 
-            this.grpHotkey.Controls.Add(this.btnSetHotkey);
-            this.grpHotkey.Controls.Add(this.lblHotkey);
+            this.grpHotkey.Controls.Add(this.hkToggle);
             this.grpHotkey.Location = new System.Drawing.Point(12, 195);
             this.grpHotkey.Name = "grpHotkey";
             this.grpHotkey.Size = new System.Drawing.Size(260, 55);
             this.grpHotkey.TabIndex = 3;
             this.grpHotkey.TabStop = false;
-            this.grpHotkey.Text = "Hotkey (start / stop)";
+            this.grpHotkey.Text = "Hotkey: start / stop (click to change)";
             // 
-            // btnSetHotkey
+            // hkToggle
             // 
-            this.btnSetHotkey.Location = new System.Drawing.Point(145, 19);
-            this.btnSetHotkey.Name = "btnSetHotkey";
-            this.btnSetHotkey.Size = new System.Drawing.Size(100, 27);
-            this.btnSetHotkey.TabIndex = 1;
-            this.btnSetHotkey.Text = "Change";
-            this.btnSetHotkey.UseVisualStyleBackColor = true;
-            this.btnSetHotkey.Click += new System.EventHandler(this.btnSetHotkey_Click);
-            // 
-            // lblHotkey
-            // 
-            this.lblHotkey.BackColor = System.Drawing.SystemColors.Window;
-            this.lblHotkey.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
-            this.lblHotkey.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Bold);
-            this.lblHotkey.Location = new System.Drawing.Point(15, 20);
-            this.lblHotkey.Name = "lblHotkey";
-            this.lblHotkey.Size = new System.Drawing.Size(120, 25);
-            this.lblHotkey.TabIndex = 0;
-            this.lblHotkey.Text = "F6";
-            this.lblHotkey.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
+            this.hkToggle.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Bold);
+            this.hkToggle.HotkeyId = 1;
+            this.hkToggle.Location = new System.Drawing.Point(15, 19);
+            this.hkToggle.Name = "hkToggle";
+            this.hkToggle.Size = new System.Drawing.Size(230, 27);
+            this.hkToggle.TabIndex = 0;
+            this.hkToggle.Text = "F6";
+            this.hkToggle.UseVisualStyleBackColor = true;
+            this.hkToggle.HotkeyPressed += new System.EventHandler(this.hkToggle_HotkeyPressed);
+            this.hkToggle.HotkeyChanged += new System.EventHandler(this.hkToggle_HotkeyChanged);
             // 
             // grpClick
             // 
@@ -290,8 +279,7 @@
         private System.Windows.Forms.Label lblCount;
         private System.Windows.Forms.Timer clickTimer;
         private System.Windows.Forms.GroupBox grpHotkey;
-        private System.Windows.Forms.Label lblHotkey;
-        private System.Windows.Forms.Button btnSetHotkey;
+        private HotkeyButton hkToggle;
         private System.Windows.Forms.GroupBox grpClick;
         private System.Windows.Forms.ComboBox cmbButton;
         private System.Windows.Forms.ComboBox cmbClickType;

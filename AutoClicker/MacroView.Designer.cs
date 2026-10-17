@@ -38,7 +38,12 @@
             this.lblWaitMs = new System.Windows.Forms.Label();
             this.btnDeleteStep = new System.Windows.Forms.Button();
             this.btnClear = new System.Windows.Forms.Button();
+            this.btnLoad = new System.Windows.Forms.Button();
+            this.btnSave = new System.Windows.Forms.Button();
             this.grpPlayback = new System.Windows.Forms.GroupBox();
+            this.lblSpeedX = new System.Windows.Forms.Label();
+            this.numSpeed = new System.Windows.Forms.NumericUpDown();
+            this.lblSpeed = new System.Windows.Forms.Label();
             this.lblPauseMs = new System.Windows.Forms.Label();
             this.numPause = new System.Windows.Forms.NumericUpDown();
             this.lblPause = new System.Windows.Forms.Label();
@@ -46,6 +51,9 @@
             this.lblTimes = new System.Windows.Forms.Label();
             this.numRepeat = new System.Windows.Forms.NumericUpDown();
             this.lblRepeat = new System.Windows.Forms.Label();
+            this.grpRecording = new System.Windows.Forms.GroupBox();
+            this.chkRecordMoves = new System.Windows.Forms.CheckBox();
+            this.chkAppend = new System.Windows.Forms.CheckBox();
             this.grpHotkeys = new System.Windows.Forms.GroupBox();
             this.hkPlay = new AutoClicker.HotkeyButton();
             this.lblPlayHotkey = new System.Windows.Forms.Label();
@@ -56,10 +64,14 @@
             this.lblStatus = new System.Windows.Forms.Label();
             this.playTimer = new System.Windows.Forms.Timer(this.components);
             this.toolTip = new System.Windows.Forms.ToolTip(this.components);
+            this.openFileDialog = new System.Windows.Forms.OpenFileDialog();
+            this.saveFileDialog = new System.Windows.Forms.SaveFileDialog();
             ((System.ComponentModel.ISupportInitialize)(this.numStepDelay)).BeginInit();
             this.grpPlayback.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.numSpeed)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.numPause)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.numRepeat)).BeginInit();
+            this.grpRecording.SuspendLayout();
             this.grpHotkeys.SuspendLayout();
             this.SuspendLayout();
             //
@@ -75,7 +87,7 @@
             this.lvSteps.Location = new System.Drawing.Point(12, 12);
             this.lvSteps.MultiSelect = false;
             this.lvSteps.Name = "lvSteps";
-            this.lvSteps.Size = new System.Drawing.Size(260, 110);
+            this.lvSteps.Size = new System.Drawing.Size(260, 120);
             this.lvSteps.TabIndex = 0;
             this.lvSteps.UseCompatibleStateImageBehavior = false;
             this.lvSteps.View = System.Windows.Forms.View.Details;
@@ -100,7 +112,7 @@
             // lblWait
             //
             this.lblWait.AutoSize = true;
-            this.lblWait.Location = new System.Drawing.Point(12, 131);
+            this.lblWait.Location = new System.Drawing.Point(12, 141);
             this.lblWait.Name = "lblWait";
             this.lblWait.Size = new System.Drawing.Size(29, 13);
             this.lblWait.TabIndex = 1;
@@ -114,7 +126,7 @@
             0,
             0,
             0});
-            this.numStepDelay.Location = new System.Drawing.Point(46, 129);
+            this.numStepDelay.Location = new System.Drawing.Point(46, 139);
             this.numStepDelay.Maximum = new decimal(new int[] {
             3600000,
             0,
@@ -130,7 +142,7 @@
             // lblWaitMs
             //
             this.lblWaitMs.AutoSize = true;
-            this.lblWaitMs.Location = new System.Drawing.Point(121, 131);
+            this.lblWaitMs.Location = new System.Drawing.Point(121, 141);
             this.lblWaitMs.Name = "lblWaitMs";
             this.lblWaitMs.Size = new System.Drawing.Size(20, 13);
             this.lblWaitMs.TabIndex = 3;
@@ -139,7 +151,7 @@
             // btnDeleteStep
             //
             this.btnDeleteStep.Enabled = false;
-            this.btnDeleteStep.Location = new System.Drawing.Point(152, 127);
+            this.btnDeleteStep.Location = new System.Drawing.Point(152, 137);
             this.btnDeleteStep.Name = "btnDeleteStep";
             this.btnDeleteStep.Size = new System.Drawing.Size(58, 24);
             this.btnDeleteStep.TabIndex = 4;
@@ -151,7 +163,7 @@
             // btnClear
             //
             this.btnClear.Enabled = false;
-            this.btnClear.Location = new System.Drawing.Point(214, 127);
+            this.btnClear.Location = new System.Drawing.Point(214, 137);
             this.btnClear.Name = "btnClear";
             this.btnClear.Size = new System.Drawing.Size(58, 24);
             this.btnClear.TabIndex = 5;
@@ -160,8 +172,34 @@
             this.btnClear.UseVisualStyleBackColor = true;
             this.btnClear.Click += new System.EventHandler(this.btnClear_Click);
             //
+            // btnLoad
+            //
+            this.btnLoad.Location = new System.Drawing.Point(12, 167);
+            this.btnLoad.Name = "btnLoad";
+            this.btnLoad.Size = new System.Drawing.Size(125, 24);
+            this.btnLoad.TabIndex = 6;
+            this.btnLoad.Text = "Load...";
+            this.toolTip.SetToolTip(this.btnLoad, "Open a macro saved in a file (replaces the current one)");
+            this.btnLoad.UseVisualStyleBackColor = true;
+            this.btnLoad.Click += new System.EventHandler(this.btnLoad_Click);
+            //
+            // btnSave
+            //
+            this.btnSave.Enabled = false;
+            this.btnSave.Location = new System.Drawing.Point(147, 167);
+            this.btnSave.Name = "btnSave";
+            this.btnSave.Size = new System.Drawing.Size(125, 24);
+            this.btnSave.TabIndex = 7;
+            this.btnSave.Text = "Save...";
+            this.toolTip.SetToolTip(this.btnSave, "Save this macro to a file");
+            this.btnSave.UseVisualStyleBackColor = true;
+            this.btnSave.Click += new System.EventHandler(this.btnSave_Click);
+            //
             // grpPlayback
             //
+            this.grpPlayback.Controls.Add(this.lblSpeedX);
+            this.grpPlayback.Controls.Add(this.numSpeed);
+            this.grpPlayback.Controls.Add(this.lblSpeed);
             this.grpPlayback.Controls.Add(this.lblPauseMs);
             this.grpPlayback.Controls.Add(this.numPause);
             this.grpPlayback.Controls.Add(this.lblPause);
@@ -169,12 +207,60 @@
             this.grpPlayback.Controls.Add(this.lblTimes);
             this.grpPlayback.Controls.Add(this.numRepeat);
             this.grpPlayback.Controls.Add(this.lblRepeat);
-            this.grpPlayback.Location = new System.Drawing.Point(12, 156);
+            this.grpPlayback.Location = new System.Drawing.Point(12, 197);
             this.grpPlayback.Name = "grpPlayback";
-            this.grpPlayback.Size = new System.Drawing.Size(260, 70);
-            this.grpPlayback.TabIndex = 6;
+            this.grpPlayback.Size = new System.Drawing.Size(260, 96);
+            this.grpPlayback.TabIndex = 8;
             this.grpPlayback.TabStop = false;
             this.grpPlayback.Text = "Playback";
+            //
+            // lblSpeedX
+            //
+            this.lblSpeedX.AutoSize = true;
+            this.lblSpeedX.Location = new System.Drawing.Point(197, 71);
+            this.lblSpeedX.Name = "lblSpeedX";
+            this.lblSpeedX.Size = new System.Drawing.Size(12, 13);
+            this.lblSpeedX.TabIndex = 9;
+            this.lblSpeedX.Text = "x";
+            //
+            // numSpeed
+            //
+            this.numSpeed.DecimalPlaces = 1;
+            this.numSpeed.Increment = new decimal(new int[] {
+            1,
+            0,
+            0,
+            65536});
+            this.numSpeed.Location = new System.Drawing.Point(118, 69);
+            this.numSpeed.Maximum = new decimal(new int[] {
+            10,
+            0,
+            0,
+            0});
+            this.numSpeed.Minimum = new decimal(new int[] {
+            1,
+            0,
+            0,
+            65536});
+            this.numSpeed.Name = "numSpeed";
+            this.numSpeed.Size = new System.Drawing.Size(75, 20);
+            this.numSpeed.TabIndex = 8;
+            this.toolTip.SetToolTip(this.numSpeed, "2 = twice as fast, 0.5 = half speed (changes the waits between steps)");
+            this.numSpeed.Value = new decimal(new int[] {
+            1,
+            0,
+            0,
+            0});
+            this.numSpeed.ValueChanged += new System.EventHandler(this.numSpeed_ValueChanged);
+            //
+            // lblSpeed
+            //
+            this.lblSpeed.AutoSize = true;
+            this.lblSpeed.Location = new System.Drawing.Point(12, 71);
+            this.lblSpeed.Name = "lblSpeed";
+            this.lblSpeed.Size = new System.Drawing.Size(38, 13);
+            this.lblSpeed.TabIndex = 7;
+            this.lblSpeed.Text = "Speed";
             //
             // lblPauseMs
             //
@@ -268,16 +354,49 @@
             this.lblRepeat.TabIndex = 0;
             this.lblRepeat.Text = "Repeat";
             //
+            // grpRecording
+            //
+            this.grpRecording.Controls.Add(this.chkRecordMoves);
+            this.grpRecording.Controls.Add(this.chkAppend);
+            this.grpRecording.Location = new System.Drawing.Point(12, 299);
+            this.grpRecording.Name = "grpRecording";
+            this.grpRecording.Size = new System.Drawing.Size(260, 66);
+            this.grpRecording.TabIndex = 9;
+            this.grpRecording.TabStop = false;
+            this.grpRecording.Text = "Recording";
+            //
+            // chkRecordMoves
+            //
+            this.chkRecordMoves.AutoSize = true;
+            this.chkRecordMoves.Location = new System.Drawing.Point(12, 42);
+            this.chkRecordMoves.Name = "chkRecordMoves";
+            this.chkRecordMoves.Size = new System.Drawing.Size(178, 17);
+            this.chkRecordMoves.TabIndex = 1;
+            this.chkRecordMoves.Text = "Record mouse moves too";
+            this.toolTip.SetToolTip(this.chkRecordMoves, "Replays the path of the mouse, not only where it clicked (makes many more steps)");
+            this.chkRecordMoves.UseVisualStyleBackColor = true;
+            //
+            // chkAppend
+            //
+            this.chkAppend.AutoSize = true;
+            this.chkAppend.Location = new System.Drawing.Point(12, 20);
+            this.chkAppend.Name = "chkAppend";
+            this.chkAppend.Size = new System.Drawing.Size(196, 17);
+            this.chkAppend.TabIndex = 0;
+            this.chkAppend.Text = "Add to the end of the current macro";
+            this.toolTip.SetToolTip(this.chkAppend, "Unticked: a new recording replaces the macro");
+            this.chkAppend.UseVisualStyleBackColor = true;
+            //
             // grpHotkeys
             //
             this.grpHotkeys.Controls.Add(this.hkPlay);
             this.grpHotkeys.Controls.Add(this.lblPlayHotkey);
             this.grpHotkeys.Controls.Add(this.hkRecord);
             this.grpHotkeys.Controls.Add(this.lblRecordHotkey);
-            this.grpHotkeys.Location = new System.Drawing.Point(12, 230);
+            this.grpHotkeys.Location = new System.Drawing.Point(12, 371);
             this.grpHotkeys.Name = "grpHotkeys";
             this.grpHotkeys.Size = new System.Drawing.Size(260, 50);
-            this.grpHotkeys.TabIndex = 7;
+            this.grpHotkeys.TabIndex = 10;
             this.grpHotkeys.TabStop = false;
             this.grpHotkeys.Text = "Change hotkeys (click a key)";
             //
@@ -329,10 +448,10 @@
             //
             // btnRecord
             //
-            this.btnRecord.Location = new System.Drawing.Point(12, 286);
+            this.btnRecord.Location = new System.Drawing.Point(12, 427);
             this.btnRecord.Name = "btnRecord";
             this.btnRecord.Size = new System.Drawing.Size(125, 30);
-            this.btnRecord.TabIndex = 8;
+            this.btnRecord.TabIndex = 11;
             this.btnRecord.Text = "Record (F8)";
             this.btnRecord.UseVisualStyleBackColor = true;
             this.btnRecord.Click += new System.EventHandler(this.btnRecord_Click);
@@ -340,10 +459,10 @@
             // btnPlay
             //
             this.btnPlay.Enabled = false;
-            this.btnPlay.Location = new System.Drawing.Point(147, 286);
+            this.btnPlay.Location = new System.Drawing.Point(147, 427);
             this.btnPlay.Name = "btnPlay";
             this.btnPlay.Size = new System.Drawing.Size(125, 30);
-            this.btnPlay.TabIndex = 9;
+            this.btnPlay.TabIndex = 12;
             this.btnPlay.Text = "Play (F7)";
             this.btnPlay.UseVisualStyleBackColor = true;
             this.btnPlay.Click += new System.EventHandler(this.btnPlay_Click);
@@ -351,16 +470,28 @@
             // lblStatus
             //
             this.lblStatus.AutoSize = true;
-            this.lblStatus.Location = new System.Drawing.Point(12, 319);
+            this.lblStatus.Location = new System.Drawing.Point(12, 461);
             this.lblStatus.Name = "lblStatus";
             this.lblStatus.Size = new System.Drawing.Size(67, 13);
-            this.lblStatus.TabIndex = 10;
+            this.lblStatus.TabIndex = 13;
             this.lblStatus.Text = "No steps yet";
             //
             // playTimer
             //
             this.playTimer.Interval = 1;
             this.playTimer.Tick += new System.EventHandler(this.playTimer_Tick);
+            //
+            // openFileDialog
+            //
+            this.openFileDialog.DefaultExt = "macro";
+            this.openFileDialog.Filter = "MaxClicks macro (*.macro)|*.macro|All files (*.*)|*.*";
+            this.openFileDialog.Title = "Load macro";
+            //
+            // saveFileDialog
+            //
+            this.saveFileDialog.DefaultExt = "macro";
+            this.saveFileDialog.Filter = "MaxClicks macro (*.macro)|*.macro|All files (*.*)|*.*";
+            this.saveFileDialog.Title = "Save macro";
             //
             // MacroView
             //
@@ -370,7 +501,10 @@
             this.Controls.Add(this.btnPlay);
             this.Controls.Add(this.btnRecord);
             this.Controls.Add(this.grpHotkeys);
+            this.Controls.Add(this.grpRecording);
             this.Controls.Add(this.grpPlayback);
+            this.Controls.Add(this.btnSave);
+            this.Controls.Add(this.btnLoad);
             this.Controls.Add(this.btnClear);
             this.Controls.Add(this.btnDeleteStep);
             this.Controls.Add(this.lblWaitMs);
@@ -378,12 +512,15 @@
             this.Controls.Add(this.lblWait);
             this.Controls.Add(this.lvSteps);
             this.Name = "MacroView";
-            this.Size = new System.Drawing.Size(284, 334);
+            this.Size = new System.Drawing.Size(284, 480);
             ((System.ComponentModel.ISupportInitialize)(this.numStepDelay)).EndInit();
             this.grpPlayback.ResumeLayout(false);
             this.grpPlayback.PerformLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.numSpeed)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this.numPause)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this.numRepeat)).EndInit();
+            this.grpRecording.ResumeLayout(false);
+            this.grpRecording.PerformLayout();
             this.grpHotkeys.ResumeLayout(false);
             this.grpHotkeys.PerformLayout();
             this.ResumeLayout(false);
@@ -402,6 +539,8 @@
         private System.Windows.Forms.Label lblWaitMs;
         private System.Windows.Forms.Button btnDeleteStep;
         private System.Windows.Forms.Button btnClear;
+        private System.Windows.Forms.Button btnLoad;
+        private System.Windows.Forms.Button btnSave;
         private System.Windows.Forms.GroupBox grpPlayback;
         private System.Windows.Forms.Label lblRepeat;
         private System.Windows.Forms.NumericUpDown numRepeat;
@@ -410,6 +549,12 @@
         private System.Windows.Forms.Label lblPause;
         private System.Windows.Forms.NumericUpDown numPause;
         private System.Windows.Forms.Label lblPauseMs;
+        private System.Windows.Forms.Label lblSpeed;
+        private System.Windows.Forms.NumericUpDown numSpeed;
+        private System.Windows.Forms.Label lblSpeedX;
+        private System.Windows.Forms.GroupBox grpRecording;
+        private System.Windows.Forms.CheckBox chkAppend;
+        private System.Windows.Forms.CheckBox chkRecordMoves;
         private System.Windows.Forms.GroupBox grpHotkeys;
         private System.Windows.Forms.Label lblRecordHotkey;
         private HotkeyButton hkRecord;
@@ -420,5 +565,7 @@
         private System.Windows.Forms.Label lblStatus;
         private System.Windows.Forms.Timer playTimer;
         private System.Windows.Forms.ToolTip toolTip;
+        private System.Windows.Forms.OpenFileDialog openFileDialog;
+        private System.Windows.Forms.SaveFileDialog saveFileDialog;
     }
 }

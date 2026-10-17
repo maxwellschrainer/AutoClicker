@@ -49,6 +49,10 @@ To call `Mouse` directly, load the built exe with `[Reflection.Assembly]::LoadFr
 - **Start the test window with `-WindowStyle Normal`**: with `Hidden` or `Minimized`, Windows applies that to the Form too, and the clicks land on whatever is behind it.
 - **Keep the test window open longer than the whole test** (no short auto-close), and remember that **keys go to the active window**: if the user is working on the PC at the same time, clicks and keys can land in their apps. Prefer to let the user test playback, or ask them not to touch the PC during it.
 - Hotkeys at startup: F6, F7 and F8 must all be taken while the app runs, without opening the Macro screen, and free again after it closes.
+- **Load / Save dialogs**: click the button with `PostMessage(BM_CLICK)` (`SendMessage` would wait until the dialog closes). Wait until a `#32770` window with the dialog's title belongs to the process (it can take more than 1 s), put the path in its first visible `Edit` with `WM_SETTEXT`, then `PostMessage(dialog, WM_COMMAND, IDOK=1)`. A warning `MessageBox` is also a `#32770`, titled "MaxClicks".
+- **Changing a hotkey**: `BM_CLICK` on the key button, then `PostMessage(button, WM_KEYDOWN, vk)`; Esc = `0x1B`.
+- **Screenshots**: crop with `DwmGetWindowAttribute(DWMWA_EXTENDED_FRAME_BOUNDS = 9)`, not `GetWindowRect`: on Windows 11 the window rect includes an invisible border, and the picture would show a strip of whatever is behind the window.
+- PowerShell's inline runner can fail to parse some long command lines; put the test in a `.ps1` file in the scratchpad and run it.
 
 ## Hotkeys
 

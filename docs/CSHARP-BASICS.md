@@ -207,6 +207,34 @@ Delegates are also how Windows calls back into C# (the hook method). Windows onl
 
 `using static AutoClicker.NativeInput;` at the top of `Mouse.cs` lets the file use `NativeInput`'s members without the class name: `INPUT` and `Send(...)` instead of `NativeInput.INPUT` and `NativeInput.Send(...)`.
 
+## Files and dialogs
+
+`System.IO.File` reads and writes whole text files in one call:
+
+```csharp
+File.WriteAllLines(path, lines);          // one string per line
+string[] lines = File.ReadAllLines(path);
+```
+
+`OpenFileDialog` / `SaveFileDialog` are the standard Windows "Open" and "Save as" windows. `ShowDialog(this)` opens one and **waits** until the user closes it (a **modal** window); it returns `DialogResult.OK` if a file was chosen, and the path is in `FileName`.
+
+## Errors: `try` / `catch`
+
+Some operations can fail for reasons the code can't prevent: the file is in use, there is no permission, the disk is full. .NET reports that by **throwing an exception**; if nothing catches it, the app crashes. `try` / `catch` catches it:
+
+```csharp
+try
+{
+    File.WriteAllLines(saveFileDialog.FileName, lines);   // may throw
+}
+catch (Exception ex) when (ex is IOException || ex is UnauthorizedAccessException)
+{
+    ShowFileError("Could not save the macro.", ex);       // runs only if it threw
+}
+```
+
+`when (...)` limits the `catch` to the errors we expect. Anything else (a real bug) is not hidden. `ex.Message` is Windows' description of the problem.
+
 ## `Stopwatch`
 
 `System.Diagnostics.Stopwatch` measures time precisely: `Restart()` starts from 0, `ElapsedMilliseconds` says how long it has been. The macro player uses it to know when each step is due.
@@ -249,4 +277,6 @@ Delegates are also how Windows calls back into C# (the hook method). Windows onl
 | **Hook (low-level)** | A method Windows calls for every key or mouse event in the system. |
 | **Scan code** | The number of the physical key on the keyboard (the key code is what it means). |
 | **ListView** | A list with columns (`lvSteps`); `View = Details` shows the column headers. |
+| **Exception / try-catch** | An error thrown at run time / the code that catches it so the app doesn't crash. |
+| **Modal dialog** | A window that blocks its owner until closed (`ShowDialog`, `MessageBox.Show`). |
 | **DPI / display scaling** | Windows enlarging everything (125%, 150%...); coordinates can then be "real pixels" or "scaled". |

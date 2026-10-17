@@ -32,6 +32,7 @@ namespace AutoClicker
         private const int WH_MOUSE_LL = 14;
 
         // wParam: what happened
+        private const int WM_MOUSEMOVE = 0x0200;
         private const int WM_KEYDOWN = 0x0100;
         private const int WM_KEYUP = 0x0101;
         private const int WM_SYSKEYDOWN = 0x0104;   // "SYS" = with Alt held (or F10)
@@ -92,6 +93,12 @@ namespace AutoClicker
         // only the first one is recorded
         private readonly HashSet<Keys> keysDown = new HashSet<Keys>();
 
+        // Windows' clock (ms) at the last recorded move, and the shortest time between two recorded moves.
+        // The mouse reports a move every few ms; keeping one every 20 ms still replays a smooth path
+        // with far fewer steps
+        private uint lastMoveTime;
+        private const uint MinMoveGap = 20;
+
         #endregion
 
         public InputRecorder()
@@ -101,6 +108,9 @@ namespace AutoClicker
         }
 
         public bool Running => keyboardHook != IntPtr.Zero;
+
+        // Also record mouse moves (not only where buttons and the wheel were used). Set before Start
+        public bool RecordMoves { get; set; }
 
         // Installs both hooks. Returns false if Windows refused
         public bool Start()
@@ -130,6 +140,7 @@ namespace AutoClicker
             keyboardHook = IntPtr.Zero;
             mouseHook = IntPtr.Zero;
             keysDown.Clear();
+            lastMoveTime = 0;
         }
 
         #region Hook Methods
@@ -169,7 +180,7 @@ namespace AutoClicker
 
         private IntPtr MouseHookProc(int nCode, IntPtr wParam, IntPtr lParam)
         {
-            // Mouse moves are not recorded: each mouse step saves where it happened instead
+            // Each mouse step saves where it happened. Moves in between are only recorded with RecordMoves
             if (nCode >= 0)
             {
                 MSLLHOOKSTRUCT info = Marshal.PtrToStructure<MSLLHOOKSTRUCT>(lParam);
@@ -177,6 +188,16 @@ namespace AutoClicker
                 if ((info.flags & LLMHF_INJECTED) == 0)
                 {
                     MacroStep step = MouseStep((int)wParam, info.mouseData);
+
+                    if ((int)wParam == WM_MOUSEMOVE)
+                    {
+                        if (RecordMoves && info.time - lastMoveTime >= MinMoveGap)
+                        {
+                            step = new MacroStep { Kind = StepKind.MouseMove };
+                            lastMoveTime = info.time;
+                        }
+                    }
+
                     if (step != null)
                     {
                         step.Position = info.pt;
@@ -187,7 +208,7 @@ namespace AutoClicker
             return CallNextHookEx(IntPtr.Zero, nCode, wParam, lParam);
         }
 
-        // Turns a mouse message into a step, or null for messages we don't record (moves)
+        // Turns a mouse button or wheel message into a step, or null for any other message (moves are handled above)
         private static MacroStep MouseStep(int message, uint mouseData)
         {
             // For the side buttons and the wheel, the useful number is in the high 16 bits of mouseData

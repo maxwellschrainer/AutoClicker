@@ -90,7 +90,7 @@
             //
             this.macroView.Location = new System.Drawing.Point(284, 0);
             this.macroView.Name = "macroView";
-            this.macroView.Size = new System.Drawing.Size(284, 334);
+            this.macroView.Size = new System.Drawing.Size(284, 480);
             this.macroView.TabIndex = 1;
             //
             // slideTimer

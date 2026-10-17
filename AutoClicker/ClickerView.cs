@@ -16,18 +16,6 @@ namespace AutoClicker
         // Number of clicks since the last Start
         private int count = 0;
 
-        // --- Hotkey ---
-
-        // Id we give Windows for our hotkey (any number, it only has to be unique in this app)
-        private const int HotkeyId = 1;
-
-        // Current hotkey: key + modifiers (e.g. Keys.Control | Keys.F6).
-        // Keys.None means no hotkey is registered. The real value comes from the settings in OnLoad
-        private Keys hotkey = Keys.None;
-
-        // True while we wait for the user to press the new hotkey
-        private bool waitingForHotkey = false;
-
         // --- Designer ---
 
         // True when this screen is being drawn inside the Visual Studio Designer (not the real app)
@@ -58,31 +46,13 @@ namespace AutoClicker
                 return;
 
             LoadSettings();
-
-            if (!TryRegisterHotkey(hotkey))
-            {
-                ShowHotkeyTakenWarning(hotkey);
-                hotkey = Keys.None; // So the screen doesn't show a hotkey that doesn't work
-            }
             UpdateControls();
         }
 
-        // Runs when this screen is hidden (e.g. switching to Macro) or shown again.
-        // If the user was choosing a new hotkey, cancel it: the keys can't reach a hidden screen
-        protected override void OnVisibleChanged(EventArgs e)
-        {
-            base.OnVisibleChanged(e);
-
-            if (!Visible && waitingForHotkey)
-                FinishHotkeyCapture(hotkey);
-        }
-
-        // Runs when the window closes and this control is destroyed:
-        // release the hotkey, so Windows frees it for other programs, and remember the click settings
+        // Runs when the window closes and this control is destroyed: remember the click settings
+        // (hkToggle releases the hotkey by itself)
         protected override void OnHandleDestroyed(EventArgs e)
         {
-            GlobalHotkey.Unregister(Handle, HotkeyId);
-
             if (!inDesigner && !DesignMode)
                 SaveClickSettings();
 
@@ -126,7 +96,12 @@ namespace AutoClicker
             UpdateControls();
         }
 
-        // Used by the hotkey: the same key starts and stops
+        // The hotkey was pressed (from any program): the same key starts and stops
+        private void hkToggle_HotkeyPressed(object sender, EventArgs e)
+        {
+            ToggleClicking();
+        }
+
         private void ToggleClicking()
         {
             if (clickTimer.Enabled)
@@ -186,105 +161,15 @@ namespace AutoClicker
 
         #endregion
 
-        #region Hotkey: Choosing a New One
+        #region Hotkey
 
-        // Step 1 - First click: start waiting for the new hotkey. Clicking again (now "Cancel") gives up
-        private void btnSetHotkey_Click(object sender, EventArgs e)
+        // Runs when the user picked a new hotkey and Windows accepted it. If the saved hotkey is taken at
+        // startup, hkToggle shows "(none)" but this doesn't run, so the file keeps the user's choice
+        private void hkToggle_HotkeyChanged(object sender, EventArgs e)
         {
-            if (waitingForHotkey)
-                FinishHotkeyCapture(hotkey);
-            else
-                StartHotkeyCapture();
-        }
-
-        // Step 2 - Get ready to receive the key
-        private void StartHotkeyCapture()
-        {
-            // Unregister the current one, otherwise Windows would catch it before our window sees it
-            GlobalHotkey.Unregister(Handle, HotkeyId);
-            waitingForHotkey = true;
+            Settings.Default.Hotkey = hkToggle.Hotkey;
+            Settings.Default.Save();
             UpdateControls();
-        }
-
-        // Step 3 - Receives every key pressed in this screen before its controls do.
-        // While waiting for a new hotkey, we take the key here instead of letting it reach the buttons
-        protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
-        {
-            if (!waitingForHotkey)
-                return base.ProcessCmdKey(ref msg, keyData);
-
-            Keys key = keyData & Keys.KeyCode; // The key without Ctrl/Alt/Shift
-
-            if (key == Keys.Escape)
-            {
-                FinishHotkeyCapture(hotkey); // Cancel: keep the old hotkey
-            }
-            // If only a modifier was pressed so far (e.g. just Ctrl), keep waiting for the real key
-            else if (key != Keys.ControlKey && key != Keys.ShiftKey && key != Keys.Menu
-                     && key != Keys.LWin && key != Keys.RWin)
-            {
-                FinishHotkeyCapture(keyData);
-            }
-            return true; // true = "already handled", the key goes nowhere else
-        }
-
-        // Step 4 - Tries to register the new hotkey; if another program already uses it, keeps the old one
-        private void FinishHotkeyCapture(Keys newHotkey)
-        {
-            waitingForHotkey = false;
-
-            if (TryRegisterHotkey(newHotkey))
-            {
-                hotkey = newHotkey;
-                SaveHotkey();
-            }
-            else
-            {
-                ShowHotkeyTakenWarning(newHotkey);
-                if (!TryRegisterHotkey(hotkey))
-                    hotkey = Keys.None;
-            }
-
-            UpdateControls();
-        }
-
-        #endregion
-
-        #region Hotkey: Registering and Receiving
-
-        // Shortcut for GlobalHotkey.Register that always uses this control and our HotkeyId.
-        // Returns true if Windows accepted the hotkey, false if it was refused (taken by another program).
-        // Keys.None means "no hotkey": there is nothing to register, so it just returns false
-        private bool TryRegisterHotkey(Keys keys)
-        {
-            return keys != Keys.None && GlobalHotkey.Register(Handle, HotkeyId, keys);
-        }
-
-        // Every message Windows sends to this control goes through here.
-        // We only care about WM_HOTKEY: our hotkey was pressed (even with another app in focus,
-        // and even while the Macro screen is the one on display)
-        protected override void WndProc(ref Message m)
-        {
-            if (m.Msg == GlobalHotkey.WM_HOTKEY && (int)m.WParam == HotkeyId)
-            {
-                ToggleClicking();
-            }
-            base.WndProc(ref m);
-        }
-
-        private void ShowHotkeyTakenWarning(Keys keys)
-        {
-            MessageBox.Show("The hotkey " + HotkeyToText(keys) + " is already used by another program.\nChoose another one.",
-                "MaxClicks", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-        }
-
-        // Turns Keys.Control | Keys.F6 into "Ctrl+F6"
-        private static string HotkeyToText(Keys keys)
-        {
-            if (keys == Keys.None)
-                return "(none)";
-
-            return new KeysConverter().ConvertToString(keys);
         }
 
         #endregion
@@ -294,7 +179,7 @@ namespace AutoClicker
         // Reads what the last run saved (or the defaults from Settings.settings on the first run)
         private void LoadSettings()
         {
-            hotkey = Settings.Default.Hotkey;
+            hkToggle.SetHotkey(Settings.Default.Hotkey);
 
             // Assigning a value outside Minimum..Maximum would throw, and the saved file can be edited by hand
             numInterval.Value = Math.Max(numInterval.Minimum, Math.Min(numInterval.Maximum, Settings.Default.Interval));
@@ -304,14 +189,6 @@ namespace AutoClicker
 
             chkLimit.Checked = Settings.Default.LimitEnabled;
             numLimit.Value = Math.Max(numLimit.Minimum, Math.Min(numLimit.Maximum, Settings.Default.ClickLimit));
-        }
-
-        // Saved only when the user picks a new hotkey that works. If the saved one is taken at startup,
-        // the screen shows "(none)" but the file keeps the old choice, so the next run tries it again
-        private void SaveHotkey()
-        {
-            Settings.Default.Hotkey = hotkey;
-            Settings.Default.Save();
         }
 
         // Interval, button, single/double click and click limit. Called on Start and when the app closes
@@ -336,24 +213,24 @@ namespace AutoClicker
             lblCount.Text = "Clicks: " + count + (chkLimit.Checked ? " / " + numLimit.Value : "");
         }
 
-        // The ONLY place that enables/disables controls and changes the hotkey texts.
-        // It reads the current state (timer running? waiting for a hotkey?) and adjusts everything to match
+        // The ONLY place that enables/disables controls and changes the button texts.
+        // It reads the current state (timer running?) and adjusts everything to match
         private void UpdateControls()
         {
             bool running = clickTimer.Enabled;
 
             // While running: only "Stop" is enabled, the interval, click options, limit and hotkey are locked
-            btnStart.Enabled = !running && !waitingForHotkey;
+            btnStart.Enabled = !running;
             btnStop.Enabled = running;
             numInterval.Enabled = !running;
             cmbButton.Enabled = !running;
             cmbClickType.Enabled = !running;
             chkLimit.Enabled = !running;
             numLimit.Enabled = !running && chkLimit.Checked;
-            btnSetHotkey.Enabled = !running;
+            hkToggle.Enabled = !running;
 
-            btnSetHotkey.Text = waitingForHotkey ? "Cancel" : "Change";
-            lblHotkey.Text = waitingForHotkey ? "Press a key..." : HotkeyToText(hotkey);
+            btnStart.Text = HotkeyButton.AddHotkey("Start", hkToggle.Hotkey);
+            btnStop.Text = HotkeyButton.AddHotkey("Stop", hkToggle.Hotkey);
         }
 
         #endregion

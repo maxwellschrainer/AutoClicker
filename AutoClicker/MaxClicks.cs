@@ -1,4 +1,5 @@
 using System;
+using System.Drawing;
 using System.Windows.Forms;
 
 namespace AutoClicker
@@ -34,6 +35,7 @@ namespace AutoClicker
             InitializeComponent();
 
             currentView = clickerView;
+            FitWindowTo(clickerView.Height);
             UpdateHeader();
         }
         #endregion
@@ -73,6 +75,9 @@ namespace AutoClicker
             nextView.Left = direction * pnlViews.Width; // Right outside the edge
             nextView.Visible = true;
 
+            // During the slide both screens are on display: make room for the taller one
+            FitWindowTo(Math.Max(currentView.Height, nextView.Height));
+
             btnSwitchView.Enabled = false; // No double click in the middle of the slide
             slideTimer.Start();
         }
@@ -102,6 +107,7 @@ namespace AutoClicker
 
             currentView = nextView;
             nextView = null;
+            FitWindowTo(currentView.Height);
 
             btnSwitchView.Enabled = true;
             UpdateHeader();
@@ -110,6 +116,18 @@ namespace AutoClicker
         #endregion
 
         #region UI Updates
+
+        // The screens have different heights (Macro is taller): the window fits the one on display
+        private void FitWindowTo(int viewHeight)
+        {
+            pnlViews.Height = viewHeight;
+            ClientSize = new Size(ClientSize.Width, pnlHeader.Height + viewHeight);
+
+            // The window grows downwards: if that pushes it below the screen (taskbar), move it up
+            Rectangle area = Screen.FromControl(this).WorkingArea;
+            if (Bottom > area.Bottom)
+                Top = Math.Max(area.Top, area.Bottom - Height);
+        }
 
         // Title shows where you are, the button shows where it takes you
         private void UpdateHeader()

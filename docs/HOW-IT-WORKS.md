@@ -42,10 +42,10 @@ The Auto Clicker screen does four things:
 | `MaxClicks.cs` / `.Designer.cs` | **The main window** (the "frame"): header with the title and the switch button, and the area where the screens are shown. Handles the slide between screens. |
 | `MaxClicks.resx` | Extra data for the Designer (e.g. where the timer icon sits in the component tray). |
 | `ClickerView.cs` / `.Designer.cs` | **The Auto Clicker screen** (a UserControl): interval, click options (button, single/double), click limit, hotkey, Start/Stop, counter, and all their logic. |
-| `MacroView.cs` / `.Designer.cs` | **The Macro screen** (a UserControl): step list, step editing, playback options, hotkeys, Record/Play, and all their logic. |
-| `MacroStep.cs` | One step of a macro (wait + key/button press or release, or wheel), how to play it, and how to save it as text. |
+| `MacroView.cs` / `.Designer.cs` | **The Macro screen** (a UserControl): step list, step editing, Load/Save, playback and recording options, hotkeys, Record/Play, and all their logic. |
+| `MacroStep.cs` | One step of a macro (wait + key/button press or release, wheel, or mouse move), how to play it, and how to save it as text. |
 | `InputRecorder.cs` | Low-level keyboard and mouse hooks: sees every key and button in Windows while recording, and turns each into a `MacroStep`. |
-| `HotkeyButton.cs` | A Button that shows a global hotkey, lets the user change it, and raises `HotkeyPressed` (used for the Macro's Record and Play hotkeys). |
+| `HotkeyButton.cs` | A Button that shows a global hotkey, lets the user change it, and raises `HotkeyPressed`. Used for every hotkey: the Auto Clicker's start/stop and the Macro's Record and Play. |
 | `NativeInput.cs` | The Windows `SendInput` function and its `INPUT` structs (mouse + keyboard union), shared by `Mouse` and `Keyboard`. |
 | `Mouse.cs` | Sends real mouse input: `Click`, `DoubleClick`, `Press`, `Release` (left, right, middle, back, forward) and `Wheel`. |
 | `Keyboard.cs` | Sends real key presses and releases. |
@@ -94,6 +94,8 @@ MaxClicks (window)
 
 Both screens are created once (in the Designer) and **never destroyed**: switching only moves and hides them. That is why the clicker keeps running, and the hotkeys keep working, while the other screen is on display.
 
+**The window fits the screen on display.** The Macro screen is taller (480 px) than the Auto Clicker (334 px), so `FitWindowTo(height)` sets `pnlViews` and the window's `ClientSize` to the screen's height: at startup, at the start of a slide (the taller of the two, both are on display), and at the end (the new screen). The window grows downwards; if that would push it below the taskbar, it moves up.
+
 **Why `macroView` starts "visible":** a UserControl that is hidden (`Visible = false`) is not really created until it is first shown: no window handle, no `OnLoad`. Its hotkeys would then only work after the first visit to the Macro screen. So `macroView` starts visible but out of sight (`Left = 284`, outside `pnlViews`), gets created with the window, and `MaxClicks.OnShown` hides it right after the window appears.
 
 ### The slide animation
@@ -109,9 +111,10 @@ Before          During                After
 | Method | Job |
 |---|---|
 | `btnSwitchView_Click` | Picks the other screen and the direction (Macro comes from the right, Clicker comes back from the left). |
-| `SlideTo(view, direction)` | Puts the new screen just outside the edge (`Left = ±width`), makes it visible, disables the button, starts `slideTimer`. |
+| `SlideTo(view, direction)` | Puts the new screen just outside the edge (`Left = ±width`), makes it visible, makes room for the taller screen, disables the button, starts `slideTimer`. |
 | `slideTimer_Tick` | Moves both screens `width / SlideSteps` pixels. After `SlideSteps` ticks (12 × 15 ms ≈ 0.2 s) calls `FinishSlide`. |
-| `FinishSlide()` | Stops the timer, hides the old screen, re-enables the button, updates the header. |
+| `FinishSlide()` | Stops the timer, hides the old screen, fits the window to the new one, re-enables the button, updates the header. |
+| `FitWindowTo(height)` | Sets the views area and the window to that height (and keeps the window above the taskbar). |
 | `UpdateHeader()` | Title shows where you are; the button shows where it takes you. |
 
 `slideDirection` is `1` or `-1`, so the same math works for both directions:
@@ -257,11 +260,14 @@ MacroView (the Macro screen)
 │ #  Wait    Action              │  ← lvSteps: one line per step
 │ 1  0 ms    Left down (512, 300)│
 │ 2  80 ms   Left up (512, 300)  │
-│ 3  400 ms  Key down: A         │
 ├────────────────────────────────┤
 │ Wait [80] ms  [Delete] [Clear] │  ← edit the selected step
+│ [ Load... ]      [ Save... ]   │  ← macro files
 │ Playback: Repeat [10] times    │
 │   [ ] Forever   Pause [500] ms │
+│   Speed [1.0] x                │
+│ Recording: [ ] Add to the end  │
+│            [ ] Mouse moves too │
 │ Change hotkeys: Record [F8]    │
 │                 Play   [F7]    │
 │ [Record (F8)]    [Play (F7)]   │
@@ -278,20 +284,22 @@ A macro is a list of `MacroStep`. Each step is **"wait `Delay` ms, then do one t
 | `KeyDown` / `KeyUp` | Press / release a key | `Key`, `ScanCode`, `Extended` |
 | `MouseDown` / `MouseUp` | Move the cursor to `Position`, press / release a button | `Button` (left, right, middle, back, forward), `Position` |
 | `Wheel` | Move the cursor to `Position`, turn the wheel | `WheelDelta` (120 per notch, + up / - down) |
+| `MouseMove` | Move the cursor to `Position` | `Position` (only recorded with "Record mouse moves too") |
 
-A click is **two steps** (down, then up). That way holding a key, holding a button, and dragging (down in one place, up in another) all replay exactly as recorded. Mouse **moves** are not recorded, only where each button/wheel event happened.
+A click is **two steps** (down, then up). That way holding a key, holding a button, and dragging (down in one place, up in another) all replay exactly as recorded. By default mouse **moves** are not recorded, only where each button/wheel event happened; see [Recording options](#recording-options).
 
 ### Recording
 
 ```
 Record (button or hotkey F8)
   └─> StartRecording ─> recorder.Start()   installs the hooks, clears the old macro
+                                           (unless "Add to the end" is ticked)
 
 You press keys / click anywhere in Windows
   └─> Windows calls InputRecorder.KeyboardHookProc / MouseHookProc
         └─> builds a MacroStep ─> Captured event ─> MacroView.recorder_Captured
               ├─ IsOwnInput? (click on MaxClicks, Record/Play hotkey) → ignored
-              ├─ Delay = event time - previous event time   (the first step gets 0)
+              ├─ Delay = event time - previous event time   (the recording's first step gets 0)
               └─ steps.Add + one line in the list
 
 Stop recording (button or hotkey F8 again)
@@ -310,7 +318,12 @@ Keys **are** recorded while MaxClicks is the active window (it still is right af
 
 **The waits** come from the time Windows stamped on each event (`time`, in ms), not from when our code ran, so they are as exact as the events themselves. The first step gets wait 0: the time spent going from the Record button to the first click is not part of the macro.
 
-**Cleaning up (`RemoveUnpairedSteps`)**: a press without a release (e.g. the Ctrl of a Ctrl+F8 hotkey) would leave a key stuck during playback, and a release without a press (a key already held when recording started) is noise. Both are removed. A removed step's wait goes to the next step (`RemoveStep`), so the others keep their timing.
+**Cleaning up (`RemoveUnpairedSteps`)**: a press without a release (e.g. the Ctrl of a Ctrl+F8 hotkey) would leave a key stuck during playback, and a release without a press (a key already held when recording started) is noise. Both are removed. A removed step's wait goes to the next step (`RemoveStep`), so the others keep their timing. Only the steps of this recording are checked (from `recordStart` on), so adding to the end never touches the older steps.
+
+### Recording options
+
+- **Add to the end of the current macro** (`chkAppend`): the new recording goes after the existing steps instead of replacing them. `recordStart` remembers where it began; its first step gets wait 0, like the first step of any recording (change it with the Wait field if needed).
+- **Record mouse moves too** (`chkRecordMoves` → `recorder.RecordMoves`): the mouse hook also turns `WM_MOUSEMOVE` into `MouseMove` steps, so playback follows the path of the mouse, not only the points where it clicked. The mouse reports a move every few ms; the recorder keeps at most one every 20 ms (`MinMoveGap`), which still replays smoothly with far fewer steps. Moves over MaxClicks itself are ignored like clicks.
 
 ### Playing
 
@@ -333,6 +346,8 @@ After each run, `PlayDueSteps` stops and waits for the next tick: a macro whose 
 
 **Repeat:** `numRepeat` times, or until stopped with **Forever**. **Pause between runs** is added after each run, before the next one's first step.
 
+**Speed:** `numSpeed` (0.1x to 10x) is read on Play into `speed`, and every step's wait goes through `Scaled(delay)` = `delay / speed`: at 2x a 300 ms wait becomes 150 ms. The pause between runs is not scaled (it is set in real ms already). Waits shorter than the Timer's ~15 ms still can't be played exactly, so very high speeds on fast macros hit that limit.
+
 **Nothing stays stuck:** `held` lists the keys/buttons the macro pressed and has not released. Stopping in the middle (e.g. during a long key hold) releases them all (`MacroStep.CreateRelease`).
 
 **Keys:** `Keyboard.Send` sends both the key code and the **scan code** (the physical key's number) recorded by the hook, plus the **extended** flag (right Ctrl/Alt, arrows, Insert, Delete, Home, End, Page Up/Down, numpad Enter and /). Some programs, mostly games, only read the scan code. Keys go to whatever window is active at that moment, like real typing.
@@ -350,189 +365,37 @@ After each run, `PlayDueSteps` stops and waits for the next tick: a macro whose 
 
 Editing is locked while recording or playing.
 
-### Hotkeys: `HotkeyButton`
+### Macro files (Load / Save)
 
-The big buttons show their hotkey (`WithHotkey`: "Record (F8)", "Stop (F7)"...), so the small key buttons in "Change hotkeys" are clearly only for changing them.
+`btnSave` asks for a file name (`saveFileDialog`) and writes a plain text file: the first line is the header `MaxClicks macro 1` (`FileHeader`), then one step per line in the same format as the settings (`MacroStep.ToSaveText()`). `btnLoad` (`openFileDialog`) reads it back:
 
-Record (default **F8**) and Play (default **F7**) each use a `HotkeyButton`: a `Button` subclass that does what the Auto Clicker's hotkey group does, in one control:
+- the header must match and every line must be a valid step (`ParseSteps`, shared with `LoadSettings`), otherwise a warning is shown and the current macro is kept;
+- a valid file replaces the current macro and is saved in the settings, so it is also the one that opens next time.
 
-- shows the key as its text; click it, then press the new key or combination (Esc, clicking elsewhere, or hiding the screen cancels);
-- registers it with `GlobalHotkey` on **its own handle** with its `HotkeyId` (2 = Record, 3 = Play; the Auto Clicker uses 1);
-- raises `HotkeyPressed` from its `WndProc` when the hotkey is pressed anywhere, and `HotkeyChanged` when the user picked a new one (MacroView saves it).
+Reading and writing files can fail for reasons outside the app (no permission, disk full, file in use): `try` / `catch` turns `IOException` and `UnauthorizedAccessException` into a message instead of a crash.
 
-The same key can't be used twice: registering a key another hotkey already holds fails, and the user gets the "already in use" warning.
+The extension is `.macro`. The playback options (repeat, pause, speed) are not in the file: they stay with the app.
+
+### Hotkeys
+
+Record (default **F8**) and Play (default **F7**) are two `HotkeyButton`s (ids 2 and 3), the same control as the Auto Clicker's hotkey: see [Feature: global hotkeys](#feature-global-hotkeys). The big buttons show their hotkey ("Record (F8)", "Stop (F7)"...), so the small key buttons under "Change hotkeys" are clearly only for changing them. `hotkey_HotkeyChanged` saves both when either changes.
 
 ### One place for the screen state
 
-Like the Auto Clicker, `UpdateControls()` is the only method that enables/disables controls, reading the state from `recorder.Running`, `playTimer.Enabled` and the selection:
-
-| State | Record | Play | Step editing | Repeat / Forever / Pause | Hotkey buttons |
-|---|---|---|---|---|---|
-| Idle | on, "Record" | on if there are steps | on (Wait/Delete need a selected step) | on (Repeat off with Forever) | on |
-| Recording | on, "Stop recording" | off | off | on | off |
-| Playing | off | on, "Stop" | off | off | off |
-
-`UpdateStatus()` writes the line at the bottom: steps and length of one run when idle, "Recording... N steps", or "Run 2 / 10 - step 3 / 4" while playing.
-
----
-
-## Feature: global hotkey
-
-**Where:** `ClickerView.cs` (the hotkey belongs to the Auto Clicker screen).
-
-### Who does what
-
-| Piece | Job |
-|---|---|
-| `GlobalHotkey.Register` | Asks Windows: "reserve this key for my window and tell me when it is pressed". Returns `false` if another program already reserved it. |
-| `GlobalHotkey.Unregister` | Gives the reservation back. |
-| `WndProc` | **Where Windows' "it was pressed" notice arrives.** Calls `ToggleClicking()`. |
-| `ProcessCmdKey` | Captures the new key while the user is choosing one. |
-
-`GlobalHotkey` does **not** detect anything by itself: it only makes the reservation. Windows does the watching and notifies the window.
-
-The hotkey is registered on `ClickerView`'s own handle (a UserControl is also a window for Windows), so the notice goes to `ClickerView.WndProc`, even while the Macro screen is the one on display.
-
-### `WndProc`: the control's mailbox
-
-Windows talks to a window by sending **messages**: numbers like `WM_PAINT` (redraw), `WM_LBUTTONDOWN` (mouse click), `WM_HOTKEY` (your hotkey). **Every** message passes through `WndProc`.
-
-Normally WinForms reads these messages for us and turns them into events (`Click`, `KeyDown`...). There is no ready-made event for `WM_HOTKEY`, so we override `WndProc` to check for it ourselves:
-
-```csharp
-protected override void WndProc(ref Message m)
-{
-    if (m.Msg == GlobalHotkey.WM_HOTKEY && (int)m.WParam == HotkeyId)
-        ToggleClicking();
-
-    base.WndProc(ref m);   // ESSENTIAL: pass every message on, or the window stops working
-}
-```
-
-- `m.Msg`: the message type.
-- `m.WParam`: for `WM_HOTKEY`, the id we used when registering (`HotkeyId = 1`).
-
-### `ProcessCmdKey`: catching the new key
-
-Receives every key pressed inside the Auto Clicker screen **before** its controls do (including Tab, Enter, Esc and arrows, which normally get used early for navigation).
-
-- `waitingForHotkey == false` → passes everything on, the keyboard behaves normally.
-- `waitingForHotkey == true` →
-  - **Esc** → cancel, keep the old hotkey.
-  - **Only Ctrl / Shift / Alt / Win** → ignore, keep waiting (so combinations like `Ctrl+F6` work).
-  - **Any other key** → `FinishHotkeyCapture(keyData)`.
-  - Returns `true` = "handled", so the key does not reach any button.
-
-`keyData` contains the key **plus** the modifiers. `keyData & Keys.KeyCode` keeps only the key.
-
-### Any key is allowed
-
-The user can pick any key or combination, including a single letter or number. Keep in mind that a global hotkey **takes the key away from every program** while MaxClicks is open: with `A` as the hotkey, pressing A anywhere toggles the clicker instead of typing "a". This was a deliberate choice: the user decides.
-
-### No hotkey (`Keys.None`)
-
-If registering fails and the old hotkey can't be registered either (e.g. F6 is already taken when the app opens), `hotkey` becomes `Keys.None` and the screen shows **(none)**, so it never shows a hotkey that doesn't work. `TryRegisterHotkey` skips `Keys.None`, since there is nothing to register.
-
-### Lifecycle
-
-```
-App opens
-  └─> ClickerView.OnLoad ─> LoadSettings ─> Register(saved hotkey, F6 the first time)
-                              (if another program already uses it: warning, hotkey = none)
-                              (all skipped inside the Visual Studio Designer)
-
-User clicks "Change"
-  └─> btnSetHotkey_Click ─> StartHotkeyCapture ─> Unregister current, waitingForHotkey = true
-        (the current key must be released, or Windows would catch it before the window sees it)
-
-User presses Ctrl+F7
-  └─> ProcessCmdKey ─> FinishHotkeyCapture
-        ├─ Register(Ctrl+F7) ok   → becomes the hotkey, SaveHotkey()
-        └─ Register fails         → warning, Register(old one) again (fails too → none)
-
-User presses Ctrl+F7 anywhere in Windows
-  └─> Windows sends WM_HOTKEY ─> WndProc ─> ToggleClicking ─> Start / Stop
-
-User switches to Macro while choosing a hotkey
-  └─> OnVisibleChanged ─> FinishHotkeyCapture(old one)   (cancel: a hidden screen gets no keys)
-
-User clicks Start / presses the hotkey
-  └─> StartClicking ─> SaveClickSettings
-
-App closes
-  └─> ClickerView.OnHandleDestroyed ─> Unregister    (frees the key for other programs)
-                                     └─> SaveClickSettings
-```
-
----
-
-## Saved settings
-
-**Where:** `Properties/Settings.settings` (the list), the "Saved Settings" region of `ClickerView.cs` and `MacroView.cs` (load/save).
-
-The Auto Clicker options and the macro (steps, playback options, hotkeys) are remembered between runs using **application settings**, a feature of .NET Framework:
-
-1. `Settings.settings` lists each value with a **name**, a **type** and a **default**:
-
-   | Name | Type | Default |
-   |---|---|---|
-   | `Hotkey` | `System.Windows.Forms.Keys` | `F6` |
-   | `Interval` | `int` | `100` |
-   | `ClickButton` | `System.Windows.Forms.MouseButtons` | `Left` |
-   | `DoubleClick` | `bool` | `False` |
-   | `LimitEnabled` | `bool` | `False` |
-   | `ClickLimit` | `int` | `100` |
-   | `MacroRecordHotkey` | `System.Windows.Forms.Keys` | `F8` |
-   | `MacroPlayHotkey` | `System.Windows.Forms.Keys` | `F7` |
-   | `MacroSteps` | `string` | (empty) |
-   | `MacroRepeat` | `int` | `1` |
-   | `MacroForever` | `bool` | `False` |
-   | `MacroPause` | `int` | `0` |
-
-2. Visual Studio turns that list into a class, `Properties.Settings`, with one property per value. `Settings.Default` is the single shared instance: `Settings.Default.Hotkey` reads the saved hotkey, `Settings.Default.Hotkey = X` changes it **in memory only**, and `Settings.Default.Save()` writes everything to disk.
-3. Scope **User** means each Windows user has their own copy, and the app is allowed to change it. (Scope *Application* would be read-only.)
-
-| Method | When | What |
-|---|---|---|
-| `LoadSettings()` | `OnLoad`, before registering the hotkey | Copies the saved hotkey into `hotkey`, the interval into `numInterval`, selects the saved button / click type in the combos, and sets the click limit box and number. |
-| `SaveHotkey()` | `FinishHotkeyCapture`, only if the new hotkey was registered | Saves `hotkey`. |
-| `SaveClickSettings()` | `StartClicking` and `OnHandleDestroyed` (the app is closing) | Saves the interval, the button, single/double and the click limit. Not on every change (the fields can change many times): on Start, so they survive a crash, and on close, so a choice made without starting is kept too. |
-
-**The macro (`MacroView`):** `LoadSettings` in `OnLoad`; `SaveMacroSettings` (steps, repeat, forever, pause) after each recording, on Play and on close; the hotkeys in `hotkey_HotkeyChanged`. `MacroSteps` holds the steps as text: each step is `MacroStep.ToSaveText()` (`Delay,Kind,Key,ScanCode,Extended,Button,X,Y,WheelDelta`, all numbers) and steps are joined with `;`. If any step can't be read back (`FromSaveText` returns `null`), the macro starts empty instead of half-loaded.
-
-**Why the hotkey is saved only on a successful change:** if the saved hotkey is taken by another program when the app opens, the screen shows "(none)". Saving at that moment would replace the user's choice with "none" for good; not saving keeps it, and the next run tries it again.
-
-**Why `LoadSettings` clamps the interval and the limit:** `NumericUpDown.Value` throws an error if given a number outside `Minimum`..`Maximum` (15..60000 for the interval, 1..1,000,000 for the limit), and the settings file is plain text anyone can edit. `Math.Max(min, Math.Min(max, value))` forces the value into the range.
-
-**Where the file lives:** `%LOCALAPPDATA%\AutoClicker\MaxClicks.exe_Url_<hash>\1.0.0.0\user.config`, a small XML file. (`AutoClicker` is the namespace, used because `AssemblyCompany` is empty; `MaxClicks.exe` is the exe name.) Things to know:
-
-- `<hash>` comes from the **exe's path**, so `bin\Debug` and `bin\Release` (or a copy elsewhere) each have their **own** saved settings.
-- `1.0.0.0` is the assembly version (`AssemblyInfo.cs`). If it changes, the app starts again from the defaults.
-
-To reset to the defaults, close the app and delete that folder.
-
-The Designer never loads or saves settings (same `inDesigner || DesignMode` check as the hotkey), otherwise it would read and write Visual Studio's own settings.
-
----
-
-## One place for the screen state
-
-`UpdateControls()` is the **only** method that enables/disables controls and changes the hotkey texts. It does not receive the state as a parameter; it **reads** it:
+`UpdateControls()` is the **only** method that enables/disables controls and changes the button texts. It does not receive the state as a parameter; it **reads** it:
 
 ```csharp
 bool running = clickTimer.Enabled;   // is the timer running?
-// ...and the waitingForHotkey field
 ```
 
 and sets every control to match:
 
-| State | Start | Stop | Interval, click combos, "Stop after" box | Limit number | Change button | Hotkey label |
-|---|---|---|---|---|---|---|
-| Stopped | on | off | on | on if the box is checked | on, "Change" | current hotkey |
-| Running | off | on | off | off | off | current hotkey |
-| Waiting for a hotkey | off | off | on | on if the box is checked | on, "Cancel" | "Press a key..." |
+| State | Start | Stop | Interval, click combos, "Stop after" box | Limit number | Hotkey button |
+|---|---|---|---|---|---|
+| Stopped | on | off | on | on if the box is checked | on |
+| Running | off | on | off | off | off |
 
-Every method that changes the state (`StartClicking`, `StopClicking`, `StartHotkeyCapture`, `FinishHotkeyCapture`, `chkLimit_CheckedChanged`, `OnLoad`) just calls `UpdateControls()` at the end. When a new state or control appears, only this method changes.
+Start and Stop show the hotkey in their text ("Start (F6)"). Every method that changes the state (`StartClicking`, `StopClicking`, `chkLimit_CheckedChanged`, `hkToggle_HotkeyChanged`, `OnLoad`) just calls `UpdateControls()` at the end. When a new state or control appears, only this method changes. The Macro screen follows the same rule (see its own table above).
 
 ---
 
@@ -548,35 +411,45 @@ Regions are grouped **by feature**, and inside each one the methods follow the o
 | Constructor | `MaxClicks()` |
 | Startup | `OnShown` (hides `macroView` once it exists) |
 | Switching Screens | `btnSwitchView_Click` → `SlideTo` → `slideTimer_Tick` → `FinishSlide` |
-| UI Updates | `UpdateHeader` |
+| UI Updates | `FitWindowTo`, `UpdateHeader` |
 
 ### `ClickerView.cs`
 
 | Region | Contains (in order) |
 |---|---|
-| Fields | Clicking: `count`. Hotkey: `HotkeyId`, `hotkey`, `waitingForHotkey`. Designer: `inDesigner` |
+| Fields | Clicking: `count`. Designer: `inDesigner` |
 | Constructor | `ClickerView()` |
-| Control Lifecycle | `OnLoad` (first shown), `OnVisibleChanged` (hidden/shown), `OnHandleDestroyed` (destroyed when the window closes) |
-| Clicking | `btnStart_Click`, `btnStop_Click` → `StartClicking`, `StopClicking`, `ToggleClicking` → `clickTimer_Tick` → `LimitReached`, `OnlyOneClickLeft`, `SelectedButton`, `SelectedDoubleClick`, `chkLimit_CheckedChanged`, `numLimit_ValueChanged` |
-| Hotkey: Choosing a New One | Steps 1–4: `btnSetHotkey_Click` → `StartHotkeyCapture` → `ProcessCmdKey` → `FinishHotkeyCapture` |
-| Hotkey: Registering and Receiving | `TryRegisterHotkey`, `WndProc`, `ShowHotkeyTakenWarning`, `HotkeyToText` |
-| Saved Settings | `LoadSettings`, `SaveHotkey`, `SaveClickSettings` |
+| Control Lifecycle | `OnLoad` (first shown), `OnHandleDestroyed` (destroyed when the window closes) |
+| Clicking | `btnStart_Click`, `btnStop_Click` → `StartClicking`, `StopClicking`, `hkToggle_HotkeyPressed` → `ToggleClicking` → `clickTimer_Tick` → `LimitReached`, `OnlyOneClickLeft`, `SelectedButton`, `SelectedDoubleClick`, `chkLimit_CheckedChanged`, `numLimit_ValueChanged` |
+| Hotkey | `hkToggle_HotkeyChanged` |
+| Saved Settings | `LoadSettings`, `SaveClickSettings` |
 | UI Updates | `UpdateCount`, `UpdateControls` |
 
 ### `MacroView.cs`
 
 | Region | Contains (in order) |
 |---|---|
-| Fields | `steps`. Recording: `recorder`, `lastStepTime`, `MaxDelay`. Playing: `run`, `stepIndex`, `playClock`, `nextStepAt`, `held`. Designer: `inDesigner` |
+| Fields | `steps`. Recording: `recorder`, `lastStepTime`, `recordStart`, `MaxDelay`. Playing: `run`, `stepIndex`, `playClock`, `nextStepAt`, `speed`, `held`. Designer: `inDesigner` |
 | Constructor | `MacroView()` |
 | Control Lifecycle | `OnLoad`, `OnHandleDestroyed` |
 | Recording | `btnRecord_Click`, `hkRecord_HotkeyPressed` → `ToggleRecording` → `StartRecording`, `StopRecording` → `recorder_Captured` → `IsOwnInput`, `ProcessCmdKey`, `RemoveUnpairedSteps`, `RemoveStep` |
-| Playing | `btnPlay_Click`, `hkPlay_HotkeyPressed` → `TogglePlaying` → `StartPlaying`, `StopPlaying` → `playTimer_Tick` → `PlayDueSteps` → `PlayStep`, `ReleaseHeld`, option handlers |
+| Playing | `btnPlay_Click`, `hkPlay_HotkeyPressed` → `TogglePlaying` → `StartPlaying`, `StopPlaying` → `playTimer_Tick` → `PlayDueSteps` → `Scaled`, `PlayStep`, `ReleaseHeld`, option handlers |
 | Editing Steps | `lvSteps_SelectedIndexChanged`, `numStepDelay_ValueChanged`, `btnDeleteStep_Click`, `lvSteps_KeyDown` → `DeleteSelectedStep`, `btnClear_Click`, `SelectedIndex` |
+| Macro Files | `FileHeader`, `btnSave_Click`, `btnLoad_Click` → `ParseSteps`, `ShowFileError` |
 | Hotkeys | `hotkey_HotkeyChanged` |
 | Saved Settings | `LoadSettings`, `SaveMacroSettings` |
-| UI Updates | `IsBusy`, `RefreshSteps`, `StepToItem`, `WaitText`, `UpdateStatus`, `UpdateControls`, `WithHotkey` |
+| UI Updates | `IsBusy`, `RefreshSteps`, `StepToItem`, `WaitText`, `UpdateStatus`, `UpdateControls` |
 
-Event handlers and overrides live in the region of the feature they belong to (e.g. `ProcessCmdKey` is in "Choosing a New One"), not in a separate "handlers" pile.
+### `HotkeyButton.cs`
+
+| Region | Contains (in order) |
+|---|---|
+| Fields | `hotkey`, `waitingForKey` |
+| Properties and Events | `HotkeyId`, `Hotkey`, `HotkeyPressed`, `HotkeyChanged` |
+| Setting the Hotkey | `SetHotkey`, `OnClick` → `StartCapture` → `ProcessCmdKey` → `FinishCapture`; cancel: `OnLostFocus`, `OnVisibleChanged`, `OnEnabledChanged` → `CancelCapture` |
+| Registering and Receiving | `TryRegister`, `WndProc`, `OnHandleDestroyed`, `ShowTakenWarning` |
+| UI Updates | `HotkeyToText`, `AddHotkey`, `UpdateText` |
+
+Event handlers and overrides live in the region of the feature they belong to (e.g. `ProcessCmdKey` of `MacroView` is in "Recording"), not in a separate "handlers" pile.
 
 `#region` changes nothing in the program; it only lets the editor fold blocks.

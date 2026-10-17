@@ -167,5 +167,41 @@ namespace AutoClicker.Properties {
                 this["MacroPause"] = value;
             }
         }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("1")]
+        public decimal MacroSpeed {
+            get {
+                return ((decimal)(this["MacroSpeed"]));
+            }
+            set {
+                this["MacroSpeed"] = value;
+            }
+        }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("False")]
+        public bool MacroAppend {
+            get {
+                return ((bool)(this["MacroAppend"]));
+            }
+            set {
+                this["MacroAppend"] = value;
+            }
+        }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("False")]
+        public bool MacroRecordMoves {
+            get {
+                return ((bool)(this["MacroRecordMoves"]));
+            }
+            set {
+                this["MacroRecordMoves"] = value;
+            }
+        }
     }
 }

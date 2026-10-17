@@ -10,11 +10,12 @@ namespace AutoClicker
         KeyUp,
         MouseDown,
         MouseUp,
-        Wheel
+        Wheel,
+        MouseMove    // Only when "Record mouse moves too" is ticked. Added last: saved macros store the number
     }
 
     // One recorded action of a macro: "wait Delay ms, then press / release this key or mouse button
-    // (or turn the wheel)". A click is two steps (down + up), so holding and dragging replay exactly
+    // (or turn the wheel, or move the mouse)". A click is two steps (down + up), so holding and dragging replay exactly
     public class MacroStep
     {
         #region Data
@@ -92,6 +93,10 @@ namespace AutoClicker
                     PhysicalScreen.MoveCursor(Position);
                     return Mouse.Release(Button);
 
+                case StepKind.MouseMove:
+                    PhysicalScreen.MoveCursor(Position);
+                    return true;
+
                 default: // Wheel
                     PhysicalScreen.MoveCursor(Position);
                     return Mouse.Wheel(WheelDelta);
@@ -102,7 +107,7 @@ namespace AutoClicker
 
         #region Text
 
-        // What the step list shows, e.g. "Key down: A", "Left up (512, 300)", "Wheel down (512, 300)"
+        // What the step list shows, e.g. "Key down: A", "Left up (512, 300)", "Move (520, 310)"
         public string Description
         {
             get
@@ -115,6 +120,7 @@ namespace AutoClicker
                     case StepKind.KeyUp: return "Key up: " + KeyName;
                     case StepKind.MouseDown: return ButtonName + " down" + at;
                     case StepKind.MouseUp: return ButtonName + " up" + at;
+                    case StepKind.MouseMove: return "Move" + at;
                     default: return (WheelDelta > 0 ? "Wheel up" : "Wheel down") + at;
                 }
             }
@@ -161,7 +167,7 @@ namespace AutoClicker
                     return null;
             }
 
-            if (n[0] < 0 || n[1] < (int)StepKind.KeyDown || n[1] > (int)StepKind.Wheel)
+            if (n[0] < 0 || n[1] < (int)StepKind.KeyDown || n[1] > (int)StepKind.MouseMove)
                 return null;
 
             return new MacroStep
