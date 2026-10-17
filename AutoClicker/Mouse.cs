@@ -9,7 +9,7 @@ namespace AutoClicker
     {
         // SendInput takes an array of input events and plays them in order, with nothing from
         // other programs in between. Returns how many events it managed to send
-        [DllImport("user32.dll", SetLastError = true)]
+        [DllImport("user32.dll")]
         private static extern uint SendInput(uint nInputs, INPUT[] pInputs, int cbSize);
 
         // The structs below must match the memory layout Windows expects, field by field.

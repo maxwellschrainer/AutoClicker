@@ -11,10 +11,10 @@ namespace AutoClicker
         // Message Windows sends to the window when the hotkey is pressed
         public const int WM_HOTKEY = 0x0312;
 
-        [DllImport("user32.dll", SetLastError = true)]
+        [DllImport("user32.dll")]
         private static extern bool RegisterHotKey(IntPtr hWnd, int id, uint fsModifiers, uint vk);
 
-        [DllImport("user32.dll", SetLastError = true)]
+        [DllImport("user32.dll")]
         private static extern bool UnregisterHotKey(IntPtr hWnd, int id);
 
         private const uint MOD_ALT = 0x0001;

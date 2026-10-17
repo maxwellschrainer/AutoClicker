@@ -18,7 +18,7 @@ Windows Forms app (C#, .NET Framework 4.8): an **Auto Clicker + Macro, two in on
 
 **Macro: not started** (`MacroView` is a "coming soon" placeholder).
 
-**In progress:** counting only clicks Windows accepted (`ClickerView.clickTimer_Tick`) + docs, built and tested, waiting for the user's review and commit.
+**In progress:** cleanup: removed unused template references from the csproj and the unread `SetLastError` from the `DllImport`s. Builds with 0 warnings, waiting for the user's review and commit.
 
 ## Next session
 
@@ -34,6 +34,7 @@ Docs:
 
 General:
 - [ ] *(Future, only if more speed/precision is ever needed)* **Exact interval**: clicks on a background thread timed with a `Stopwatch` (or a high-resolution waitable timer) instead of the WinForms Timer; the screen reads the counter with a slow UI timer. Would allow < 15 ms and exact intervals. New concepts: threads, `Interlocked`, stopping a thread safely.
+- [ ] *(Optional)* `Properties/Resources.resx` + `Resources.Designer.cs` are unused template files. Keep them if an app icon or images are added later; otherwise they can be removed (also from the csproj).
 - [ ] If the slide flickers too much on some PCs, try double buffering (`WS_EX_COMPOSITED`) on the form.
 
 ## Not tested yet

@@ -96,7 +96,7 @@ After building the project, both appear in the Visual Studio Toolbox and can be 
 Some things .NET does not offer, so we call Windows functions from `user32.dll`:
 
 ```csharp
-[DllImport("user32.dll", SetLastError = true)]
+[DllImport("user32.dll")]
 private static extern uint SendInput(uint nInputs, INPUT[] pInputs, int cbSize);
 ```
 
