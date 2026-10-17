@@ -181,8 +181,9 @@ private bool SelectedDoubleClick => cmbClickType.SelectedIndex == 1;
 `MouseButtons` is an **enum** that already exists in WinForms (`Left`, `Right`, `Middle`...), so no new type was needed. It is also what gets saved in the settings.
 
 **In `Mouse.cs`:**
-- `Click(button)` sends "press" then "release" for that button (`mouse_event` flags: left `0x0002`/`0x0004`, right `0x0008`/`0x0010`).
-- `DoubleClick(button)` just calls `Click` twice. Windows turns two clicks into a double click when they happen in the same spot within the double-click time (500 ms by default), and these happen right after each other.
+- `Click(button)` and `DoubleClick(button)` both call `SendClicks(button, clicks)`, which builds an array of `INPUT` structs ("press, release" per click; flags: left `0x0002`/`0x0004`, right `0x0008`/`0x0010`) and sends it with **one** `SendInput` call, so nothing else can get in between.
+- A double click is just two clicks in that array. Windows turns two clicks into a double click when they happen in the same spot within the double-click time (500 ms by default).
+- Both return `true` when Windows took every event. `ClickerView` ignores the result for now.
 
 **Counter:** it counts **real clicks**, so a double click adds **2**. With "Double click" at 500 ms the counter goes up by 4 per second, against 2 with "Single click".
 

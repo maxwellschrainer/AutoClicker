@@ -96,11 +96,34 @@ After building the project, both appear in the Visual Studio Toolbox and can be 
 Some things .NET does not offer, so we call Windows functions from `user32.dll`:
 
 ```csharp
-[DllImport("user32.dll")]
-private static extern void mouse_event(...);
+[DllImport("user32.dll", SetLastError = true)]
+private static extern uint SendInput(uint nInputs, INPUT[] pInputs, int cbSize);
 ```
 
 `extern` means "the code of this method is not here, it is inside the DLL". This is called **P/Invoke**. `Mouse.cs` and `GlobalHotkey.cs` both use it.
+
+## `struct` and `[StructLayout]`: data shaped for Windows
+
+A **struct** is like a small class that holds values (`INPUT`, `MOUSEINPUT` in `Mouse.cs`). Unlike a class, it is copied when assigned, and an array of structs holds the values themselves, side by side in memory.
+
+When a struct is passed to Windows, its bytes must be in exactly the order and size Windows expects:
+
+```csharp
+[StructLayout(LayoutKind.Sequential)]   // keep the fields in this order in memory
+private struct MOUSEINPUT
+{
+    public int dx;
+    public int dy;
+    public uint mouseData;
+    public uint dwFlags;
+    public uint time;
+    public IntPtr dwExtraInfo;          // IntPtr: 4 bytes on 32-bit, 8 bytes on 64-bit
+}
+```
+
+`Marshal.SizeOf(typeof(INPUT))` gives the struct's size in bytes; `SendInput` asks for it to check that both sides agree. If the size is wrong, it sends nothing.
+
+A **union** (in C, used by Windows) is a struct whose members share the same memory: only one of them is used at a time. C# has no union keyword; it is done with `[StructLayout(LayoutKind.Explicit)]` and `[FieldOffset(0)]` on each member.
 
 ---
 
@@ -118,6 +141,8 @@ private static extern void mouse_event(...);
 | **`base`** | The parent class (`Form`, `UserControl`); `base.X()` runs the original version. |
 | **Cast** | Converting a value to another type: `(int)value`. |
 | **P/Invoke** | Calling a Windows DLL function from C# (`DllImport` + `extern`). |
+| **Struct** | A small value type; copied on assignment. `[StructLayout]` fixes its memory layout for Windows. |
+| **Union** | A C struct whose members share the same memory; in C# done with `LayoutKind.Explicit` + `[FieldOffset]`. |
 | **Handle** | The number Windows uses to identify a window or control (`this.Handle`). |
 | **Message** | How Windows notifies a window that something happened (`WM_...`). |
 | **Modifier** | Ctrl, Shift, Alt (and Win) combined with a key. |

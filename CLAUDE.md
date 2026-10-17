@@ -48,7 +48,7 @@ AutoClicker/                 ← git repo root (this folder)
    ├─ MaxClicks.*            ← main Form: header + switch button + slide between screens
    ├─ ClickerView.*          ← UserControl: auto clicker screen (interval, click options, click limit, hotkey, start/stop, counter)
    ├─ MacroView.*            ← UserControl: macro screen (placeholder, not implemented)
-   ├─ Mouse.cs               ← P/Invoke mouse_event: Click(button), DoubleClick(button)
+   ├─ Mouse.cs               ← P/Invoke SendInput: Click(button), DoubleClick(button)
    ├─ GlobalHotkey.cs        ← P/Invoke RegisterHotKey/UnregisterHotKey + WM_HOTKEY
    └─ Properties/Settings.*  ← saved settings (Hotkey, Interval, ClickButton, DoubleClick, LimitEnabled, ClickLimit), mirrored in App.config
 ```
