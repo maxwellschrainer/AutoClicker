@@ -92,7 +92,6 @@
             this.macroView.Name = "macroView";
             this.macroView.Size = new System.Drawing.Size(284, 334);
             this.macroView.TabIndex = 1;
-            this.macroView.Visible = false;
             //
             // slideTimer
             //

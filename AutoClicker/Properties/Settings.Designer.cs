@@ -94,5 +94,78 @@ namespace AutoClicker.Properties {
                 this["ClickLimit"] = value;
             }
         }
+    
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("F8")]
+        public global::System.Windows.Forms.Keys MacroRecordHotkey {
+            get {
+                return ((global::System.Windows.Forms.Keys)(this["MacroRecordHotkey"]));
+            }
+            set {
+                this["MacroRecordHotkey"] = value;
+            }
+        }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("F7")]
+        public global::System.Windows.Forms.Keys MacroPlayHotkey {
+            get {
+                return ((global::System.Windows.Forms.Keys)(this["MacroPlayHotkey"]));
+            }
+            set {
+                this["MacroPlayHotkey"] = value;
+            }
+        }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("")]
+        public string MacroSteps {
+            get {
+                return ((string)(this["MacroSteps"]));
+            }
+            set {
+                this["MacroSteps"] = value;
+            }
+        }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("1")]
+        public int MacroRepeat {
+            get {
+                return ((int)(this["MacroRepeat"]));
+            }
+            set {
+                this["MacroRepeat"] = value;
+            }
+        }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("False")]
+        public bool MacroForever {
+            get {
+                return ((bool)(this["MacroForever"]));
+            }
+            set {
+                this["MacroForever"] = value;
+            }
+        }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("0")]
+        public int MacroPause {
+            get {
+                return ((int)(this["MacroPause"]));
+            }
+            set {
+                this["MacroPause"] = value;
+            }
+        }
     }
 }

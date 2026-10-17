@@ -100,11 +100,11 @@ Some things .NET does not offer, so we call Windows functions from `user32.dll`:
 private static extern uint SendInput(uint nInputs, INPUT[] pInputs, int cbSize);
 ```
 
-`extern` means "the code of this method is not here, it is inside the DLL". This is called **P/Invoke**. `Mouse.cs` and `GlobalHotkey.cs` both use it.
+`extern` means "the code of this method is not here, it is inside the DLL". This is called **P/Invoke**. `NativeInput.cs`, `GlobalHotkey.cs`, `InputRecorder.cs` and `PhysicalScreen.cs` use it.
 
 ## `struct` and `[StructLayout]`: data shaped for Windows
 
-A **struct** is like a small class that holds values (`INPUT`, `MOUSEINPUT` in `Mouse.cs`). Unlike a class, it is copied when assigned, and an array of structs holds the values themselves, side by side in memory.
+A **struct** is like a small class that holds values (`INPUT`, `MOUSEINPUT`, `KEYBDINPUT` in `NativeInput.cs`). Unlike a class, it is copied when assigned, and an array of structs holds the values themselves, side by side in memory.
 
 When a struct is passed to Windows, its bytes must be in exactly the order and size Windows expects:
 
@@ -123,7 +123,93 @@ private struct MOUSEINPUT
 
 `Marshal.SizeOf(typeof(INPUT))` gives the struct's size in bytes; `SendInput` asks for it to check that both sides agree. If the size is wrong, it sends nothing.
 
-A **union** (in C, used by Windows) is a struct whose members share the same memory: only one of them is used at a time. C# has no union keyword; it is done with `[StructLayout(LayoutKind.Explicit)]` and `[FieldOffset(0)]` on each member.
+A **union** (in C, used by Windows) is a struct whose members share the same memory: only one of them is used at a time. C# has no union keyword; it is done with `[StructLayout(LayoutKind.Explicit)]` and `[FieldOffset(0)]` on each member (see `InputUnion` in `NativeInput.cs`: one input is either mouse or keyboard).
+
+## Auto-properties and object initializers
+
+`MacroStep` stores its data in **auto-properties**: a property where C# creates the hidden field for you.
+
+```csharp
+public int Delay { get; set; }   // can be read (get) and changed (set) from outside
+```
+
+An **object initializer** sets properties right when the object is created, in `{ }` after `new`:
+
+```csharp
+MacroStep step = new MacroStep { Kind = StepKind.MouseDown, Button = MouseButtons.Left };
+// same as: var step = new MacroStep(); step.Kind = ...; step.Button = ...;
+```
+
+## Your own enum
+
+`StepKind` (in `MacroStep.cs`) is an enum we declared: a fixed list of names for what a step does.
+
+```csharp
+public enum StepKind { KeyDown, KeyUp, MouseDown, MouseUp, Wheel }
+```
+
+Under the hood each name is a number (0, 1, 2...), which is how steps are saved: `(int)Kind` turns it into the number, `(StepKind)n` back into the name.
+
+## `switch`
+
+Picks one block of code by value; cleaner than a long `if / else if` chain. Each `case` ends with `return` or `break`; `default` catches everything else.
+
+```csharp
+switch (Kind)
+{
+    case StepKind.KeyDown:
+    case StepKind.KeyUp:           // two cases sharing one block
+        return Keyboard.Send(...);
+    default:
+        return Mouse.Wheel(WheelDelta);
+}
+```
+
+## Collections: `List<T>` and `HashSet<T>`
+
+- **`List<MacroStep>`** (`steps` in `MacroView`): an ordered list that grows as you `Add`. `steps[0]` is the first item, `steps.Count` how many there are, `RemoveAt(i)` removes one.
+- **`HashSet<Keys>`** (`keysDown` in `InputRecorder`): a set with no order and no duplicates. `Add` returns `false` if the item was already there, which is how key repeats are detected.
+- `<T>` is a **generic**: the same List code works for any type, and the compiler checks you only put that type in.
+- **`foreach`** walks through every item: `foreach (MacroStep step in steps) { ... }`.
+
+## Lambdas (`=>` as a small function)
+
+`x => something` is a tiny function written inline. Here it is passed to `FindIndex`, which calls it on each item and returns the index of the first one that gives `true` (or -1):
+
+```csharp
+int press = held.FindIndex(h => h.IsReleasedBy(step));
+//                         "for each h: is h released by this step?"
+```
+
+Not to be confused with `=>` properties (above): same arrow, different place.
+
+## Delegates and your own events
+
+A **delegate** is a type for "a method with this shape". `Action<MacroStep, uint>` means "a method that takes a MacroStep and a uint and returns nothing".
+
+`InputRecorder` declares its own event with it:
+
+```csharp
+public event Action<MacroStep, uint> Captured;      // in InputRecorder
+recorder.Captured += recorder_Captured;             // in MacroView: "call me"
+Captured?.Invoke(step, info.time);                  // in InputRecorder: raise it
+```
+
+`?.` means "only if it is not null": if nobody subscribed, `Captured` is null and nothing happens. `HotkeyButton` does the same with `EventHandler` (the standard `(sender, e)` shape every WinForms event uses).
+
+Delegates are also how Windows calls back into C# (the hook method). Windows only keeps a raw pointer, so the delegate must be kept in a field, or the **garbage collector** (which frees objects nothing refers to) could delete it while Windows still calls it.
+
+## Subclassing a control
+
+`public class HotkeyButton : Button` makes a new kind of Button that keeps everything a Button does and adds its own `override`s (`OnClick`, `ProcessCmdKey`, `WndProc`...). After a build it appears in the Toolbox like any other control. Attributes such as `[Browsable(false)]` tell the Designer to hide a property.
+
+## `using static`
+
+`using static AutoClicker.NativeInput;` at the top of `Mouse.cs` lets the file use `NativeInput`'s members without the class name: `INPUT` and `Send(...)` instead of `NativeInput.INPUT` and `NativeInput.Send(...)`.
+
+## `Stopwatch`
+
+`System.Diagnostics.Stopwatch` measures time precisely: `Restart()` starts from 0, `ElapsedMilliseconds` says how long it has been. The macro player uses it to know when each step is due.
 
 ---
 
@@ -152,3 +238,15 @@ A **union** (in C, used by Windows) is a struct whose members share the same mem
 | **CheckBox** | A box that can be ticked; `Checked` is `true` or `false`, `CheckedChanged` fires when it changes. |
 | **ComboBox** | A drop-down list; `SelectedIndex` is the position of the chosen item (0, 1, ...; -1 = none). |
 | **Settings** | Values saved on disk between runs (`Properties.Settings.Default`). |
+| **Auto-property** | `{ get; set; }`: a property whose field C# creates for you. |
+| **Object initializer** | `new X { A = 1, B = 2 }`: sets properties while creating the object. |
+| **Generic** | A type that works with any type you give it in `<>`: `List<MacroStep>`. |
+| **List / HashSet** | An ordered, growable list / a set without duplicates. |
+| **Lambda** | A small inline function: `h => h.IsReleasedBy(step)`. |
+| **Delegate** | A type for "a method with this shape" (`Action<...>`, `EventHandler`). |
+| **`?.`** | "Only if not null": `Captured?.Invoke(...)`. |
+| **Garbage collector** | The part of .NET that frees objects nothing refers to anymore. |
+| **Hook (low-level)** | A method Windows calls for every key or mouse event in the system. |
+| **Scan code** | The number of the physical key on the keyboard (the key code is what it means). |
+| **ListView** | A list with columns (`lvSteps`); `View = Details` shows the column headers. |
+| **DPI / display scaling** | Windows enlarging everything (125%, 150%...); coordinates can then be "real pixels" or "scaled". |

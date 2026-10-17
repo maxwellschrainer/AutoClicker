@@ -38,6 +38,20 @@ namespace AutoClicker
         }
         #endregion
 
+        #region Startup
+
+        // Runs once, right after the window first appears.
+        // macroView starts "visible" but out of sight (Left = width, outside pnlViews), because a hidden
+        // UserControl is not created (no OnLoad, no window handle) until it is shown: its hotkeys would
+        // only start working after the first visit to the Macro screen. Now that it is created, hide it
+        protected override void OnShown(EventArgs e)
+        {
+            base.OnShown(e);
+            macroView.Visible = false;
+        }
+
+        #endregion
+
         #region Switching Screens
 
         // Runs when the switch button is clicked: slide to the other screen

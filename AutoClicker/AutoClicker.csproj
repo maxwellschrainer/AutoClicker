@@ -52,13 +52,21 @@
       <DependentUpon>ClickerView.cs</DependentUpon>
     </Compile>
     <Compile Include="GlobalHotkey.cs" />
+    <Compile Include="HotkeyButton.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="InputRecorder.cs" />
+    <Compile Include="Keyboard.cs" />
     <Compile Include="MacroView.cs">
       <SubType>UserControl</SubType>
     </Compile>
     <Compile Include="MacroView.Designer.cs">
       <DependentUpon>MacroView.cs</DependentUpon>
     </Compile>
+    <Compile Include="MacroStep.cs" />
     <Compile Include="Mouse.cs" />
+    <Compile Include="NativeInput.cs" />
+    <Compile Include="PhysicalScreen.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <EmbeddedResource Include="MaxClicks.resx">

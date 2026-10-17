@@ -47,10 +47,15 @@ AutoClicker/                 ← git repo root (this folder)
    ├─ Program.cs             ← Main → Application.Run(new MaxClicks())
    ├─ MaxClicks.*            ← main Form: header + switch button + slide between screens
    ├─ ClickerView.*          ← UserControl: auto clicker screen (interval, click options, click limit, hotkey, start/stop, counter)
-   ├─ MacroView.*            ← UserControl: macro screen (placeholder, not implemented)
-   ├─ Mouse.cs               ← P/Invoke SendInput: Click(button), DoubleClick(button)
+   ├─ MacroView.*            ← UserControl: macro screen (step list + editing, playback options, hotkeys, record/play)
+   ├─ MacroStep.cs           ← one macro step: data, Play(), save/load as text
+   ├─ InputRecorder.cs       ← low-level keyboard/mouse hooks used while recording
+   ├─ HotkeyButton.cs        ← Button subclass: shows/changes/registers one global hotkey (Macro's Record/Play)
+   ├─ NativeInput.cs         ← P/Invoke SendInput + INPUT structs (mouse/keyboard union)
+   ├─ Mouse.cs / Keyboard.cs ← send mouse / key input through NativeInput
+   ├─ PhysicalScreen.cs      ← cursor move / window-at-point in real pixels (display scaling)
    ├─ GlobalHotkey.cs        ← P/Invoke RegisterHotKey/UnregisterHotKey + WM_HOTKEY
-   └─ Properties/Settings.*  ← saved settings (Hotkey, Interval, ClickButton, DoubleClick, LimitEnabled, ClickLimit), mirrored in App.config
+   └─ Properties/Settings.*  ← saved settings (Auto Clicker options, Macro* settings), mirrored in App.config
 ```
 
 ## Build
@@ -67,9 +72,11 @@ Expect zero errors and zero warnings. The output is `MaxClicks.exe` (assembly na
 
 - **Old-style csproj**: new `.cs` files are NOT picked up automatically. Add `<Compile Include="X.cs" />` entries (UserControls: `<SubType>UserControl</SubType>` on `X.cs` and `<DependentUpon>X.cs</DependentUpon>` on `X.Designer.cs`).
 - **Designer files** (`*.Designer.cs`) are edited by hand here, but keep them in the exact format the VS Designer generates, so the user can keep editing visually. Renaming a component also requires renaming its `*.TrayLocation` metadata in the `.resx`.
-- **The VS Designer runs UserControl code** (constructor, `OnLoad`) inside `devenv.exe`. Anything that touches Windows (hotkeys, clicks, files) must be skipped there: `ClickerView` checks `inDesigner || DesignMode` (`inDesigner` is set in the constructor from `LicenseManager.UsageMode`). Forgetting this made Visual Studio hold F6.
+- **The VS Designer runs UserControl code** (constructor, `OnLoad`) inside `devenv.exe`. Anything that touches Windows (hotkeys, clicks, files) must be skipped there: `ClickerView` and `MacroView` check `inDesigner || DesignMode` (`inDesigner` is set in the constructor from `LicenseManager.UsageMode`). Forgetting this made Visual Studio hold F6.
 - **After changing a UserControl**, the user must rebuild in VS and close/reopen the `[Design]` tab for the Designer to load the new code.
-- **Global hotkeys** are registered on `ClickerView`'s own handle, id `1`. Only one process can hold a key: if a hotkey seems "taken", check who holds it (see `docs/TESTING.md`).
+- **Global hotkeys** are registered on the handle of the control that uses them: `ClickerView` id `1`, `HotkeyButton`s ids `2` (Record) and `3` (Play). Only one process can hold a key: if a hotkey seems "taken", check who holds it (see `docs/TESTING.md`).
+- **A hidden UserControl is not created** (no handle, no `OnLoad`) until shown. `macroView` starts visible out of sight and `MaxClicks.OnShown` hides it; don't set `Visible = false` in the Designer, or the Macro hotkeys stop working until the screen is opened.
+- **Playing a macro in a test sends real clicks and keys**; keys go to the active window, which may be the user's app. See "Macro" in `docs/TESTING.md`.
 - Use `System.Windows.Forms.Timer` (UI thread) for anything that updates controls. It only fires every ~15.6 ms (rounded up), and `timeBeginPeriod(1)` did not help: see "Known limit" in `docs/HOW-IT-WORKS.md`.
 - **Starting the clicker in a test makes real clicks** wherever the cursor is. Only automate Start with a test window under the cursor (see `docs/TESTING.md`).
 - Avoid non-ASCII characters in C# string literals; use escapes (`"►"`).
@@ -84,5 +91,5 @@ There are no unit tests. Follow `docs/TESTING.md` (PowerShell recipes, safe real
 - Regions by feature, methods in the order things happen (see "Code layout" in `docs/HOW-IT-WORKS.md`).
 - Comments explain *why*, not what the line already says.
 - Control names: prefix + English (`btnStart`, `lblCount`, `numInterval`, `grpHotkey`, `pnlViews`); handlers `control_Event`.
-- One method owns the screen state (`UpdateControls` in `ClickerView`, `UpdateHeader` in `MaxClicks`); state-changing methods call it at the end.
+- One method owns the screen state (`UpdateControls` in `ClickerView` and `MacroView`, `UpdateHeader` in `MaxClicks`); state-changing methods call it at the end.
 - Overrides always call `base`.

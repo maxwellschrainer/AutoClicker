@@ -42,6 +42,14 @@ Open a small TopMost logging Form right under the cursor (PowerShell + WinForms,
 
 To call `Mouse` directly, load the built exe with `[Reflection.Assembly]::LoadFrom` (the class is public).
 
+## Macro
+
+- **Recording ignores injected input** on purpose, and everything a script sends (`SendInput`, `keybd_event`, `mouse_event`) is injected. To test it anyway, copy the project to the scratchpad, remove the two `INJECTED` checks in the copy's `InputRecorder.cs`, build the copy and drive it: press Record with `BM_CLICK`, send keys that do nothing in other apps (F13 = `0x7C`) and clicks only on a TopMost test window, press F8, then read the status label and `MacroSteps` in `user.config`. Never change the real `InputRecorder.cs` for this. Delete the copy and its settings folder afterwards.
+- **Playback can be**: close the app, write a macro into `MacroSteps` in `user.config` (format in [Saved settings](HOW-IT-WORKS.md#saved-settings); `MouseButtons.Left` = `1048576`, key `A` = `65`, its scan code `30`), relaunch, open the Macro screen and press Play with `BM_CLICK`. Point the mouse steps at a test window (TopMost, logging `MouseDown`/`MouseUp` and the text of a TextBox) and check the counts.
+- **Start the test window with `-WindowStyle Normal`**: with `Hidden` or `Minimized`, Windows applies that to the Form too, and the clicks land on whatever is behind it.
+- **Keep the test window open longer than the whole test** (no short auto-close), and remember that **keys go to the active window**: if the user is working on the PC at the same time, clicks and keys can land in their apps. Prefer to let the user test playback, or ask them not to touch the PC during it.
+- Hotkeys at startup: F6, F7 and F8 must all be taken while the app runs, without opening the Macro screen, and free again after it closes.
+
 ## Hotkeys
 
 Check whether a hotkey is free: `RegisterHotKey(IntPtr.Zero, id, MOD_NOREPEAT=0x4000, vk)`; if it returns true, unregister it immediately. F6 = `0x75`, F7 = `0x76`.
