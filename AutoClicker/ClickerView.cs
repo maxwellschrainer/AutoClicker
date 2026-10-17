@@ -136,20 +136,21 @@ namespace AutoClicker
         }
 
         // Each tick from the timer is one click or one double click. The counter counts real clicks,
-        // so a double click adds 2
+        // so a double click adds 2. Clicks Windows refused (e.g. while the PC is locked) are not counted,
+        // so the limit is only reached by clicks that really happened
         private void clickTimer_Tick(object sender, EventArgs e)
         {
             // If the limit has room for only one more click (e.g. limit 5 with double clicks: 2 + 2 + 1),
             // the last one is a single click, so the clicker never goes past the limit
             if (SelectedDoubleClick && !OnlyOneClickLeft)
             {
-                Mouse.DoubleClick(SelectedButton);
-                count += 2;
+                if (Mouse.DoubleClick(SelectedButton))
+                    count += 2;
             }
             else
             {
-                Mouse.Click(SelectedButton);
-                count++;
+                if (Mouse.Click(SelectedButton))
+                    count++;
             }
             UpdateCount();
 

@@ -21,6 +21,7 @@ For how the code works, see [HOW-IT-WORKS.md](HOW-IT-WORKS.md).
 - **15 ms minimum interval instead of a thread-based clicker** (user's choice): the Timer can't go faster (see "Known limit" in [HOW-IT-WORKS.md](HOW-IT-WORKS.md#known-limit-the-interval-is-not-exact)). An honest UI was a one-line change; ~63 clicks/s is enough for normal use, and a thread adds complexity and new concepts for little gain now.
 - **Counter resets on every Start.**
 - **A double click counts as 2** in the counter and in the limit: the screen shows what the mouse really did. (It was 1 per Tick before; changed because single and double looked the same on the counter.)
+- **Clicks Windows refused are not counted** (and don't use up the limit): the clicker keeps running instead of stopping, so it picks up again by itself when the PC is unlocked.
 - **Exact click limit**: with double clicks and an odd limit, the last Tick is a single click instead of going past the limit.
 - **`SendInput` instead of `mouse_event`**: `mouse_event` is deprecated. `SendInput` sends all press/release events of a click (or double click) in one call, so no other input can land in between, and it reports how many events went through. It will also send keys for the Macro.
 - **`INPUT` declares only the mouse part of the Windows union**: `MOUSEINPUT` is the biggest member, so the struct size is still right on 32 and 64 bits. Keyboard input will need the full union (`[FieldOffset]`).

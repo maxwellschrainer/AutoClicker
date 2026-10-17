@@ -131,13 +131,13 @@ private void clickTimer_Tick(object sender, EventArgs e)
 {
     if (SelectedDoubleClick && !OnlyOneClickLeft)
     {
-        Mouse.DoubleClick(SelectedButton);   // 2 real clicks
-        count += 2;
+        if (Mouse.DoubleClick(SelectedButton))   // 2 real clicks
+            count += 2;
     }
     else
     {
-        Mouse.Click(SelectedButton);         // 1 real click
-        count++;
+        if (Mouse.Click(SelectedButton))         // 1 real click
+            count++;
     }
     UpdateCount();      // show it
 
@@ -147,6 +147,8 @@ private void clickTimer_Tick(object sender, EventArgs e)
 ```
 
 `count += 2` is short for `count = count + 2`; `count++` is short for `count = count + 1`.
+
+`Mouse.Click` / `DoubleClick` return `true` only when Windows took the click, so the counter (and the limit) only count clicks that really happened. Windows refuses them e.g. while the PC is locked or a UAC prompt is on screen; the timer keeps going and the clicks count again once input is accepted.
 
 | Method | Job |
 |---|---|
@@ -183,7 +185,7 @@ private bool SelectedDoubleClick => cmbClickType.SelectedIndex == 1;
 **In `Mouse.cs`:**
 - `Click(button)` and `DoubleClick(button)` both call `SendClicks(button, clicks)`, which builds an array of `INPUT` structs ("press, release" per click; flags: left `0x0002`/`0x0004`, right `0x0008`/`0x0010`) and sends it with **one** `SendInput` call, so nothing else can get in between.
 - A double click is just two clicks in that array. Windows turns two clicks into a double click when they happen in the same spot within the double-click time (500 ms by default).
-- Both return `true` when Windows took every event. `ClickerView` ignores the result for now.
+- Both return `true` when Windows took every event; `clickTimer_Tick` only counts the click then. A click blocked by a window running as administrator is NOT reported: `SendInput` still returns `true`.
 
 **Counter:** it counts **real clicks**, so a double click adds **2**. With "Double click" at 500 ms the counter goes up by 4 per second, against 2 with "Single click".
 

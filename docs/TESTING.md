@@ -31,6 +31,8 @@ These recipes were all used successfully.
 | Screenshot a window | `GetWindowRect` + `Graphics.CopyFromScreen`, then view the PNG. |
 | Click a button or toggle a CheckBox | Find its child HWND by text (`EnumChildWindows` + `GetWindowText`) and `SendMessage(h, BM_CLICK=0x00F5)`. UI Automation did not find the WinForms buttons; Win32 did. |
 | Change a DropDownList ComboBox | They have no findable window text: find them by class name (`GetClassName` contains `COMBOBOX`, in tab order) and `SendMessage(h, CB_SETCURSEL=0x014E, index, 0)`. `SelectedIndex` reads the native selection, so saving picks it up. |
+| Type in a NumericUpDown | Find its inner edit (`GetClassName` contains `EDIT`; tell interval and limit apart by `GetWindowRect` position), select all with `EM_SETSEL=0x00B1 (0, -1)`, then `SendMessage(h, WM_CHAR=0x0102, char, 0)` per character. |
+| Read a control's text | Use `SendMessage(h, WM_GETTEXT=0x000D, ...)`. `GetWindowText` from another process does NOT ask the control: for edits it returns stale text. |
 | Send a key to the app | `PostMessage(buttonHwnd, WM_KEYDOWN=0x0100, vk, 0)` (goes through `ProcessCmdKey`). |
 | Check saved settings | Read or edit `user.config` (XML) between runs. |
 
